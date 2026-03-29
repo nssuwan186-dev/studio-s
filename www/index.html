@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏨 รีสอร์ท สวีท - ระบบจัดการ</title>
+    <style>body{font-family:sans-serif}</style>
+    <script src="js/tailwind.min.js"></script>
+    <script src="js/moment.min.js"></script>
+    <script src="js/moment-th.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Prompt', sans-serif;
+            background: #f5f5f5;
+            overflow-x: hidden;
+        }
+        .nav-item {
+            transition: all 0.2s;
+            border-radius: 0.5rem;
+        }
+        .nav-item:hover {
+            background: #f0f0f0;
+        }
+        .nav-item.active {
+            background: #1a1a1a;
+            color: white;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            border: 1px solid #e5e5e5;
+        }
+        .btn-primary {
+            background: #1a1a1a;
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:active {
+            background: #333;
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #1a1a1a;
+            border: 1px solid #e5e5e5;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e5e5e5;
+            border-radius: 0.5rem;
+            font-family: inherit;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #1a1a1a;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        .status-available { background: #d1fae5; color: #065f46; }
+        .status-occupied { background: #fef3c7; color: #92400e; }
+        .status-maintenance { background: #fee2e2; color: #991b1b; }
+        .status-cleaning { background: #dbeafe; color: #1e40af; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .safe-area {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .bottom-nav {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .bottom-nav { display: flex; }
+            .sidebar { display: none; }
+            .main-content { padding-bottom: 80px; }
+        }
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1a1a;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e5e5;
+            border-top-color: #1a1a1a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 bg-white border-b z-30 safe-area">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-bold text-gray-900">รีสอร์ท สวีท</h1>
+                    <p class="text-xs text-gray-500">ระบบจัดการ</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span class="text-xs text-gray-600">Online</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="h-screen flex pt-14">
+        <!-- Sidebar (Desktop) -->
+        <aside class="sidebar w-64 bg-white border-r fixed inset-y-0 left-0 z-20 overflow-y-auto">
+            <nav class="p-3 space-y-1">
+                <p class="text-xs font-bold text-gray-500 px-3 py-2">เมนูหลัก</p>
+                <button onclick="switchSection('dashboard')" class="nav-item active w-full flex items-center gap-3 px-3 py-2.5" data-section="dashboard">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                    </svg>
+                    <span>แดชบอร์ด</span>
+                </button>
+                <button onclick="switchSection('checkin')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5" data-section="checkin">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    <span>เช็คอิน</span>
+                </button>
+                <button onclick="switchSection('rooms')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5" data-section="rooms">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    <span>ห้องพัก</span>
+                </button>
+                <button onclick="switchSection('customers')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5" data-section="customers">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span>ลูกค้า</span>
+                </button>
+                <p class="text-xs font-bold text-gray-500 px-3 py-2 mt-4">การเงิน</p>
+                <button onclick="switchSection('accounting')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5" data-section="accounting">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>บัญชี</span>
+                </button>
+                <button onclick="switchSection('reports')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5" data-section="reports">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <span>รายงาน</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content flex-1 overflow-y-auto bg-gray-50 w-full">
+            <!-- DASHBOARD SECTION -->
+            <section id="dashboard" class="section active p-4 animate-fade-in">
+                <h2 class="text-xl font-bold mb-4">📊 แดชบอร์ด</h2>
+                
+                <!-- Room Stats -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">🏠 ห้องพัก</h3>
+                    <div class="grid grid-cols-4 gap-3">
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <p class="text-2xl font-bold text-gray-900" id="dash-total-rooms">-</p>
+                            <p class="text-xs text-gray-500">ทั้งหมด</p>
+                        </div>
+                        <div class="text-center p-3 bg-green-50 rounded-lg">
+                            <p class="text-2xl font-bold text-green-600" id="dash-available">-</p>
+                            <p class="text-xs text-gray-500">ว่าง</p>
+                        </div>
+                        <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                            <p class="text-2xl font-bold text-yellow-600" id="dash-occupied">-</p>
+                            <p class="text-xs text-gray-500">มีผู้พัก</p>
+                        </div>
+                        <div class="text-center p-3 bg-red-50 rounded-lg">
+                            <p class="text-2xl font-bold text-red-600" id="dash-maintenance">-</p>
+                            <p class="text-xs text-gray-500">ซ่อมบำรุง</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Finance Today -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">💰 การเงินวันนี้</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                            <span class="text-sm text-green-700">รายรับ</span>
+                            <span class="font-bold text-green-800" id="dash-income">฿0</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                            <span class="text-sm text-red-700">รายจ่าย</span>
+                            <span class="font-bold text-red-800" id="dash-expense">฿0</span>
+                        </div>
+                        <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                            <span class="text-sm text-blue-700">คงเหลือ</span>
+                            <span class="font-bold text-blue-800" id="dash-balance">฿0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Activity -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">📅 กิจกรรมวันนี้</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="p-3 bg-gray-50 rounded-lg text-center">
+                            <p class="text-xl font-bold" id="dash-checkins">-</p>
+                            <p class="text-xs text-gray-500">✓ เช็คอิน</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg text-center">
+                            <p class="text-xl font-bold" id="dash-checkouts">-</p>
+                            <p class="text-xs text-gray-500">✕ เช็คเอาท์</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg text-center">
+                            <p class="text-xl font-bold" id="dash-active">-</p>
+                            <p class="text-xs text-gray-500">👥 ผู้พัก</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Check-outs -->
+                <div class="card p-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">⚠️ เช็คเอาท์วันนี้</h3>
+                    <div id="checkout-list" class="space-y-2">
+                        <p class="text-gray-400 text-center py-4">ไม่มีรายการ</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CHECK-IN SECTION -->
+            <section id="checkin" class="section p-4 animate-fade-in">
+                <h2 class="text-xl font-bold mb-4">📝 เช็คอินลูกค้าใหม่</h2>
+                
+                <!-- Customer Search -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">🔍 ค้นหาลูกค้า</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="customer-search" class="input-field flex-1" placeholder="รหัสลูกค้า, ชื่อ, เบอร์โทร" oninput="searchCustomer(this.value)">
+                        <button onclick="openCustomerModal()" class="btn-primary px-4 py-2 rounded-lg text-sm">+ ใหม่</button>
+                    </div>
+                    <div id="customer-results" class="mt-2 space-y-1"></div>
+                </div>
+
+                <!-- Selected Customer -->
+                <div id="selected-customer" class="hidden card p-4 mb-4 bg-green-50 border-green-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-green-800" id="cust-name"></p>
+                            <p class="text-sm text-green-600" id="cust-phone"></p>
+                            <p class="text-xs text-green-500" id="cust-id"></p>
+                        </div>
+                        <button onclick="clearCustomer()" class="text-red-500 hover:text-red-700">✕</button>
+                    </div>
+                </div>
+
+                <!-- Room Selection -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">🏠 เลือกห้อง</h3>
+                    <select id="room-select" class="input-field" onchange="updateRoomInfo()">
+                        <option value="">-- เลือกห้องว่าง --</option>
+                    </select>
+                    <div id="room-info" class="mt-2 text-sm text-gray-600"></div>
+                </div>
+
+                <!-- Dates -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">📅 วันที่พัก</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1">วันเช็คอิน</label>
+                            <input type="date" id="checkin-date" class="input-field" onchange="calculateTotal()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1">วันเช็คเอาท์</label>
+                            <input type="date" id="checkout-date" class="input-field" onchange="calculateTotal()">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">🌙 จำนวนคืน</label>
+                        <input type="number" id="nights" class="input-field bg-gray-50" value="1" readonly>
+                    </div>
+                </div>
+
+                <!-- Price Calculation -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">💵 ราคา</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1">ราคา/คืน</label>
+                            <input type="number" id="room-rate" class="input-field bg-gray-50" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1">ค่าห้องรวม</label>
+                            <input type="number" id="room-total" class="input-field bg-gray-50" readonly>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1">💡 ค่าไฟ</label>
+                            <input type="number" id="electric-fee" class="input-field" value="0" onchange="calculateTotal()">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold mb-1">💧 ค่าน้ำ</label>
+                            <input type="number" id="water-fee" class="input-field" value="0" onchange="calculateTotal()">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold mb-1">📋 เงินมัดจำ</label>
+                        <input type="number" id="deposit" class="input-field" value="200" onchange="calculateTotal()">
+                        <p class="text-xs text-gray-500 mt-1">* จะคืนเมื่อเช็คเอาท์</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold mb-1">🏷️ ส่วนลด</label>
+                        <input type="number" id="discount" class="input-field" value="0" onchange="calculateTotal()">
+                    </div>
+                </div>
+
+                <!-- Total -->
+                <div class="card p-4 mb-4 bg-gray-900 text-white">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm">💰 ยอดรวมทั้งหมด</span>
+                        <span id="grand-total" class="text-2xl font-bold">฿0</span>
+                    </div>
+                    <div class="text-xs text-gray-400 space-y-1" id="total-breakdown"></div>
+                </div>
+
+                <!-- Payment -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">💳 วิธีชำระ</h3>
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="payment-method" value="cash" checked>
+                            <span class="text-sm">💵 เงินสด</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="payment-method" value="transfer">
+                            <span class="text-sm">📱 โอน</span>
+                        </label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="payment-method" value="qrcode">
+                            <span class="text-sm">🔳 QR</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">💵 จำนวนเงินที่รับ</label>
+                        <input type="number" id="amount-paid" class="input-field" placeholder="ระบุจำนวนเงิน" onchange="calculateChange()">
+                        <p id="change-amount" class="text-sm mt-1 font-bold"></p>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">📝 หมายเหตุ</h3>
+                    <textarea id="notes" rows="2" class="input-field" placeholder="พักต่อ, ขอเพิ่มเตียง, ฯลฯ"></textarea>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 safe-area pb-4">
+                    <button onclick="clearCheckinForm()" class="flex-1 btn-secondary py-3 rounded-lg text-sm">ล้างฟอร์ม</button>
+                    <button onclick="submitCheckin()" class="flex-1 btn-primary py-3 rounded-lg text-sm font-bold">✅ ยืนยันเช็คอิน</button>
+                </div>
+            </section>
+
+            <!-- ROOMS SECTION -->
+            <section id="rooms" class="section p-4 animate-fade-in">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">🏠 ห้องพัก</h2>
+                    <button onclick="loadRooms()" class="text-sm text-blue-600">🔄 รีเฟรช</button>
+                </div>
+                
+                <!-- Building Filter -->
+                <div class="card p-3 mb-4">
+                    <div class="flex gap-2 overflow-x-auto">
+                        <button onclick="filterRooms('all')" class="px-4 py-1.5 rounded-lg text-xs font-medium bg-gray-900 text-white" data-filter="all">ทั้งหมด</button>
+                        <button onclick="filterRooms('A')" class="px-4 py-1.5 rounded-lg text-xs font-medium bg-gray-100" data-filter="A">ตึก A</button>
+                        <button onclick="filterRooms('B')" class="px-4 py-1.5 rounded-lg text-xs font-medium bg-gray-100" data-filter="B">ตึก B</button>
+                        <button onclick="filterRooms('N')" class="px-4 py-1.5 rounded-lg text-xs font-medium bg-gray-100" data-filter="N">ตึก N</button>
+                    </div>
+                </div>
+
+                <!-- Room Grid -->
+                <div id="rooms-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div class="col-span-full text-center py-8 text-gray-400">กำลังโหลด...</div>
+                </div>
+            </section>
+
+            <!-- CUSTOMERS SECTION -->
+            <section id="customers" class="section p-4 animate-fade-in">
+                <h2 class="text-xl font-bold mb-4">👥 ลูกค้า</h2>
+                
+                <!-- Search -->
+                <div class="card p-3 mb-4">
+                    <div class="flex gap-2">
+                        <input type="text" id="customer-list-search" class="input-field flex-1" placeholder="ค้นหาชื่อ, รหัส, เบอร์โทร">
+                        <button onclick="searchCustomerList()" class="btn-primary px-4 py-2 rounded-lg text-sm">ค้นหา</button>
+                    </div>
+                </div>
+
+                <!-- Customer List -->
+                <div id="customer-list" class="space-y-2">
+                    <div class="text-center py-8 text-gray-400">กำลังโหลด...</div>
+                </div>
+            </section>
+
+            <!-- ACCOUNTING SECTION -->
+            <section id="accounting" class="section p-4 animate-fade-in">
+                <h2 class="text-xl font-bold mb-4">💰 บัญชีรายรับ-รายจ่าย</h2>
+                
+                <!-- Date Selector -->
+                <div class="card p-3 mb-4">
+                    <div class="flex gap-2">
+                        <input type="date" id="accounting-date" class="input-field flex-1">
+                        <button onclick="loadAccounting()" class="btn-primary px-4 py-2 rounded-lg text-sm">โหลด</button>
+                        <button onclick="exportAccounting()" class="btn-secondary px-4 py-2 rounded-lg text-sm">📥 Export</button>
+                    </div>
+                </div>
+
+                <!-- Balance Summary -->
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="card p-3 text-center">
+                        <p class="text-xs text-green-600">รายรับ</p>
+                        <p id="acc-income" class="text-lg font-bold text-green-700">฿0</p>
+                    </div>
+                    <div class="card p-3 text-center">
+                        <p class="text-xs text-red-600">รายจ่าย</p>
+                        <p id="acc-expense" class="text-lg font-bold text-red-700">฿0</p>
+                    </div>
+                    <div class="card p-3 text-center">
+                        <p class="text-xs text-blue-600">คงเหลือ</p>
+                        <p id="acc-balance" class="text-lg font-bold text-blue-700">฿0</p>
+                    </div>
+                </div>
+
+                <!-- Opening Balance -->
+                <div class="card p-3 mb-4 bg-yellow-50 border-yellow-200">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-yellow-700">💰 ยอดยกมา</span>
+                        <span id="acc-opening" class="font-bold text-yellow-800">฿4,037</span>
+                    </div>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="card p-3">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-gray-700">รายการวันนี้</h3>
+                        <button onclick="openTransactionModal()" class="text-sm text-blue-600">+ เพิ่มรายการ</button>
+                    </div>
+                    <div id="transaction-list" class="space-y-2">
+                        <div class="text-center py-4 text-gray-400">ไม่มีรายการ</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- REPORTS SECTION -->
+            <section id="reports" class="section p-4 animate-fade-in">
+                <h2 class="text-xl font-bold mb-4">📊 รายงาน</h2>
+                
+                <!-- Report Type -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">ประเภทรายงาน</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="generateReport('daily')" class="p-3 bg-gray-50 rounded-lg text-left hover:bg-gray-100">
+                            <p class="font-bold">📅 รายวัน</p>
+                            <p class="text-xs text-gray-500">สรุปประจำวัน</p>
+                        </button>
+                        <button onclick="generateReport('monthly')" class="p-3 bg-gray-50 rounded-lg text-left hover:bg-gray-100">
+                            <p class="font-bold">📆 รายเดือน</p>
+                            <p class="text-xs text-gray-500">สรุปประจำเดือน</p>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Monthly Report Form -->
+                <div class="card p-4 mb-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">สร้างรายงานรายเดือน</h3>
+                    <div class="flex gap-2">
+                        <select id="report-year" class="input-field flex-1">
+                            <option value="2025">2568</option>
+                            <option value="2024">2567</option>
+                        </select>
+                        <select id="report-month" class="input-field flex-1">
+                            <option value="01">มกราคม</option>
+                            <option value="02">กุมภาพันธ์</option>
+                            <option value="03">มีนาคม</option>
+                            <option value="04">เมษายน</option>
+                            <option value="05">พฤษภาคม</option>
+                            <option value="06">มิถุนายน</option>
+                            <option value="07">กรกฎาคม</option>
+                            <option value="08">สิงหาคม</option>
+                            <option value="09">กันยายน</option>
+                            <option value="10">ตุลาคม</option>
+                            <option value="11">พฤศจิกายน</option>
+                            <option value="12">ธันวาคม</option>
+                        </select>
+                        <button onclick="generateMonthlyReport()" class="btn-primary px-4 py-2 rounded-lg text-sm">สร้าง</button>
+                    </div>
+                </div>
+
+                <!-- Report Result -->
+                <div id="report-result" class="hidden card p-4 mb-4">
+                    <h3 class="font-bold mb-3">ผลลัพธ์รายงาน</h3>
+                    <div id="report-content"></div>
+                </div>
+
+                <!-- Export -->
+                <div class="card p-4">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">📥 Export ข้อมูล</h3>
+                    <div class="flex gap-2">
+                        <button onclick="exportData('transactions')" class="flex-1 btn-secondary py-3 rounded-lg text-sm">บัญชี CSV</button>
+                        <button onclick="exportData('customers')" class="flex-1 btn-secondary py-3 rounded-lg text-sm">ลูกค้า CSV</button>
+                        <button onclick="exportData('rooms')" class="flex-1 btn-secondary py-3 rounded-lg text-sm">ห้อง CSV</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Bottom Navigation (Mobile) -->
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 bg-white border-t safe-area z-40">
+        <div class="grid grid-cols-5 gap-1 p-2">
+            <button onclick="switchSection('dashboard')" class="nav-item active flex flex-col items-center py-2" data-section="dashboard">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+                </svg>
+                <span class="text-xs mt-1">แดชบอร์ด</span>
+            </button>
+            <button onclick="switchSection('checkin')" class="nav-item flex flex-col items-center py-2" data-section="checkin">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                <span class="text-xs mt-1">เช็คอิน</span>
+            </button>
+            <button onclick="switchSection('rooms')" class="nav-item flex flex-col items-center py-2" data-section="rooms">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span class="text-xs mt-1">ห้องพัก</span>
+            </button>
+            <button onclick="switchSection('accounting')" class="nav-item flex flex-col items-center py-2" data-section="accounting">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-xs mt-1">บัญชี</span>
+            </button>
+            <button onclick="switchSection('reports')" class="nav-item flex flex-col items-center py-2" data-section="reports">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="text-xs mt-1">รายงาน</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="js/app-local.js"></script>
+</body>
+</html>
