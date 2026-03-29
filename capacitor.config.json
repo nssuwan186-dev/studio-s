@@ -1,0 +1,18 @@
+{
+  "appId": "com.resortsuite.app",
+  "appName": "รีสอร์ท สวีท",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#f5f5f5"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1000,
+      "backgroundColor": "#1a1a1a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}
