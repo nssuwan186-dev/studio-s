@@ -1,0 +1,62 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download Tailwind CSS (local bundle)
+        run: |
+          curl -sL https://cdn.tailwindcss.com/3.4.0 -o www/js/tailwind.min.js || \
+          curl -sL https://unpkg.com/tailwindcss@3/dist/tailwind.min.css -o /tmp/tw.css && \
+          echo "window._tw_loaded=true" > www/js/tailwind.min.js
+          
+      - name: Download Moment.js (local bundle)
+        run: |
+          curl -sL https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js -o www/js/moment.min.js
+          curl -sL https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/th.min.js -o www/js/moment-th.min.js
+
+      - name: Setup Capacitor & Add Android
+        run: |
+          npx cap add android
+          npx cap copy android
+
+      - name: Make Gradle executable
+        run: chmod +x android/gradlew
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: resort-suite-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
