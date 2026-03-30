@@ -78,6 +78,7 @@ const db = {
   rooms: {
     getAll: async () => _get(DB_KEYS.rooms),
     getById: async (id) => _get(DB_KEYS.rooms).find(r => r.id == id) || null,
+    getByNumber: async (num) => _get(DB_KEYS.rooms).find(r => r.room_number === num) || null,
     getByStatus: async (status) => _get(DB_KEYS.rooms).filter(r => r.status === status),
     update: async (id, updates) => {
       const rows = _get(DB_KEYS.rooms);

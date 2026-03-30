@@ -57,6 +57,7 @@ async function saveQuickGuest() {
 }
 
 async function openQuickIncome() {
+  if (!appSettings) appSettings = await db.settings.get();
   const rooms = await db.rooms.getAll();
   const occ = rooms.filter(r => r.status === 'occupied');
   let html = '<option value="">-- เลือกห้อง (ถ้ามี) --</option>';
@@ -110,6 +111,7 @@ async function saveQuickExpense() {
 }
 
 async function openQuickCheckin() {
+  if (!appSettings) appSettings = await db.settings.get();
   const rooms = await db.rooms.getAll();
   const avail = rooms.filter(r => r.status === 'available');
   let html = '<option value="">-- เลือกห้อง --</option>';
@@ -872,87 +874,7 @@ async function searchCustList() {
           <button onclick="deleteCust('${c.customer_id}')" style="background:var(--danger);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑️</button>
         </div>
       </div>
-    </div>`).join('');
-}
-
-async function editCust(custId) {
-  const custs = await db.customers.getAll();
-  const c = custs.find(x => x.customer_id === custId);
-  if (!c) return;
-  const name = prompt('ชื่อลูกค้า:', c.name);
-  if (!name) return;
-  const phone = prompt('เบอร์โทร:', c.phone || '') || '';
-  const idCard = prompt('เลขบัตรประชาชน:', c.id_card || '') || '';
-  const all = await db.customers.getAll();
-  const idx = all.findIndex(x => x.customer_id === custId);
-  if (idx !== -1) {
-    all[idx] = { ...all[idx], name, phone, id_card: idCard };
-    localStorage.setItem('resort_customers', JSON.stringify(all));
-    showToast('แก้ไขลูกค้าแล้ว');
-    loadCusts();
-  }
-}
-
-async function deleteCust(custId) {
-  if (!confirm('ลบลูกค้า?')) return;
-  const all = await db.customers.getAll();
-  const filtered = all.filter(c => c.customer_id !== custId);
-  localStorage.setItem('resort_customers', JSON.stringify(filtered));
-  showToast('ลบลูกค้าแล้ว');
-  loadCusts();
-}
-
-// =============================================================
-// ACCOUNTING + RECEIPT IMAGES
-// =============================================================
-async function loadAcc() {
-  const date = document.getElementById('acc-date').value;
-  const txs = await db.transactions.getByDate(date);
-  const settings = await db.settings.get();
-  const inc = txs.reduce((s, t) => s + (t.receipt || 0), 0);
-  const exp = txs.reduce((s, t) => s + (t.payment || 0), 0);
-  const op = settings.openingBalance || 0;
-  document.getElementById('acc-open').textContent = `฿${op.toLocaleString()}`;
-  document.getElementById('acc-in').textContent = `฿${inc.toLocaleString()}`;
-  document.getElementById('acc-out').textContent = `฿${exp.toLocaleString()}`;
-  document.getElementById('acc-bal').textContent = `฿${(op + inc - exp).toLocaleString()}`;
-  const list = document.getElementById('tx-list');
-  if (!txs.length) { list.innerHTML = '<div class="empty">ไม่มีรายการ</div>'; return; }
-  let bal = op;
-  list.innerHTML = await Promise.all(txs.map(async t => {
-    bal += (t.receipt || 0) - (t.payment || 0);
-    const slipImg = await db.transactions.getImage(t.id);
-    const hasImg = slipImg && slipImg.length > 10;
-    const pmIcon = t.payment_method === 'cash' ? '💵' : t.payment_method === 'transfer' ? '📱' : t.payment_method === 'qrcode' ? '🔳' : '';
-    return `<div class="txi" id="tx-${t.id}">
-      <div style="flex:1">
-        <div class="txn">${t.item_name} ${pmIcon}</div>
-        <div class="txm">${t.room_number || '-'} ${t.customer_name ? '· ' + t.customer_name : ''} ${t.notes ? '· ' + t.notes : ''}</div>
-        ${hasImg ? `<img src="${slipImg}" style="height:44px;border-radius:6px;border:1px solid var(--border);margin-top:5px;cursor:pointer" onclick="viewTxImg('${t.id}')">` : ''}
-      </div>
-      <div style="text-align:right;min-width:88px">
-        ${t.receipt > 0 ? `<div class="txp">+฿${t.receipt.toLocaleString()}</div>` : ''}
-        ${t.payment > 0 ? `<div class="txng">-฿${t.payment.toLocaleString()}</div>` : ''}
-        <div class="txb">฿${bal.toLocaleString()}</div>
-        <div style="display:flex;gap:3px;margin-top:3px">
-          <button onclick="attachImg(${t.id})" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:10px;cursor:pointer">📎${hasImg ? '' : '-slip'}</button>
-          <button onclick="deleteTx(${t.id})" style="background:var(--danger-light);border:1px solid var(--danger);border-radius:5px;padding:3px 6px;font-size:10px;cursor:pointer">🗑️</button>
-        </div>
-      </div>
-    </div>`;
-  }));
-}
-
-async function viewTxImg(txId) {
-  const img = await db.transactions.getImage(txId);
-  if (img) viewImg(img);
-}
-
-async function deleteTx(txId) {
-  if (!confirm('ลบรายการนี้?')) return;
-  await db.transactions.delete(txId);
-  showToast('ลบรายการแล้ว');
-  loadAcc();
+    </div>`);
 }
 
 async function addTx() {
@@ -1030,11 +952,54 @@ function viewImg(imgSrc, filename = 'slip') {
   document.body.appendChild(ov);
 }
 
-function viewTxImg(txId) {
-  const el = document.getElementById(`tx-${txId}`);
-  const img = el?.querySelector('img');
-  if (!img) return;
-  viewImg(img.src, 'slip-tx-' + txId);
+async function loadAcc() {
+  const date = document.getElementById('acc-date').value;
+  const txs = await db.transactions.getByDate(date);
+  const settings = await db.settings.get();
+  const inc = txs.reduce((s, t) => s + (t.receipt || 0), 0);
+  const exp = txs.reduce((s, t) => s + (t.payment || 0), 0);
+  const op = settings.openingBalance || 0;
+  document.getElementById('acc-open').textContent = `฿${op.toLocaleString()}`;
+  document.getElementById('acc-in').textContent = `฿${inc.toLocaleString()}`;
+  document.getElementById('acc-out').textContent = `฿${exp.toLocaleString()}`;
+  document.getElementById('acc-bal').textContent = `฿${(op + inc - exp).toLocaleString()}`;
+  const list = document.getElementById('tx-list');
+  if (!txs.length) { list.innerHTML = '<div class="empty">ไม่มีรายการ</div>'; return; }
+  let bal = op;
+  list.innerHTML = await Promise.all(txs.map(async t => {
+    bal += (t.receipt || 0) - (t.payment || 0);
+    const slipImg = await db.transactions.getImage(t.id);
+    const hasImg = slipImg && slipImg.length > 10;
+    const pmIcon = t.payment_method === 'cash' ? '💵' : t.payment_method === 'transfer' ? '📱' : t.payment_method === 'qrcode' ? '🔳' : '';
+    return `<div class="txi" id="tx-${t.id}">
+      <div style="flex:1">
+        <div class="txn">${t.item_name} ${pmIcon}</div>
+        <div class="txm">${t.room_number || '-'} ${t.customer_name ? '· ' + t.customer_name : ''} ${t.notes ? '· ' + t.notes : ''}</div>
+        ${hasImg ? `<img src="${slipImg}" style="height:44px;border-radius:6px;border:1px solid var(--border);margin-top:5px;cursor:pointer" onclick="viewTxImg('${t.id}')">` : ''}
+      </div>
+      <div style="text-align:right;min-width:88px">
+        ${t.receipt > 0 ? `<div class="txp">+฿${t.receipt.toLocaleString()}</div>` : ''}
+        ${t.payment > 0 ? `<div class="txng">-฿${t.payment.toLocaleString()}</div>` : ''}
+        <div class="txb">฿${bal.toLocaleString()}</div>
+        <div style="display:flex;gap:3px;margin-top:3px">
+          <button onclick="attachImg(${t.id})" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:10px;cursor:pointer">📎${hasImg ? '' : '-slip'}</button>
+          <button onclick="deleteTx(${t.id})" style="background:var(--danger-light);border:1px solid var(--danger);border-radius:5px;padding:3px 6px;font-size:10px;cursor:pointer">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  }));
+}
+
+async function viewTxImg(txId) {
+  const img = await db.transactions.getImage(txId);
+  if (img) viewImg(img);
+}
+
+async function deleteTx(txId) {
+  if (!confirm('ลบรายการนี้?')) return;
+  await db.transactions.delete(txId);
+  showToast('ลบรายการแล้ว');
+  loadAcc();
 }
 
 async function expAcc() {
