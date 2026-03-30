@@ -1,7 +1,6 @@
 ext {
+    cdvMinSdkVersion = 22
     cdvCompileSdkVersion = 33
-    android.compileSdkVersion = 33
-    android.minSdkVersion = 22
-    android.targetSdkVersion = 33
-    android.buildToolsVersion = "33.0.0"
+    cdvTargetSdkVersion = 33
+    cdvBuildToolsVersion = "33.0.0"
 }
