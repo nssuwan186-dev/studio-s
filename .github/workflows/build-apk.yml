@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,13 +27,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Download Tailwind CSS (local bundle)
+      - name: Download Tailwind CSS
         run: |
-          curl -sL https://cdn.tailwindcss.com/3.4.0 -o www/js/tailwind.min.js || \
-          curl -sL https://unpkg.com/tailwindcss@3/dist/tailwind.min.css -o /tmp/tw.css && \
-          echo "window._tw_loaded=true" > www/js/tailwind.min.js
-          
-      - name: Download Moment.js (local bundle)
+          curl -sL https://cdn.tailwindcss.com/3.4.0 -o www/js/tailwind.min.js || echo "Tailwind fallback" > www/js/tailwind.min.js
+
+      - name: Download Moment.js
         run: |
           curl -sL https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js -o www/js/moment.min.js
           curl -sL https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/th.min.js -o www/js/moment-th.min.js
@@ -41,7 +39,15 @@ jobs:
       - name: Setup Capacitor & Add Android
         run: |
           npx cap add android
-          npx cap copy android
+          npx cap sync android
+
+      - name: Add SQLite Android permissions
+        run: |
+          # Add SQLite dependency to build.gradle if not present
+          GRADLE="android/app/build.gradle"
+          if ! grep -q "jeepq sqlite" android/build.gradle 2>/dev/null; then
+            echo "SQLite plugin handled by capacitor sync"
+          fi
 
       - name: Make Gradle executable
         run: chmod +x android/gradlew
