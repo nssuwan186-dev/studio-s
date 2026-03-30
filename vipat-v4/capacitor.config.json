@@ -1,0 +1,10 @@
+{
+  "appId": "com.vipat.hotel",
+  "appName": "VIPAT Hotel",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": { "allowMixedContent": true, "backgroundColor": "#1B4332" },
+  "plugins": {
+    "CapacitorSQLite": { "androidIsEncryption": false }
+  }
+}
