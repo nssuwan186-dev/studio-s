@@ -1,14 +1,153 @@
 /**
  * VIPAT Hotel Manager v4.1
- * รวม: SQLite + OCR + Auto-complete + 51 ห้อง + Import CSV + รูปใบเสร็จ + Settings
+ * รวม: SQLite + OCR + Auto-complete + 51 ห้อง + Import CSV + รูปใบเสร็จ + Settings + Employee
  */
 
 let selCust = null;
-let curSec = 'dashboard';
+let curSec = 'login';
 let curFilter = 'all';
 let curRoomId = null;
 let histData = null;
 let appSettings = null;
+let currentUser = null;
+
+// =============================================================
+// AUTH & LOGIN
+// =============================================================
+async function login() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  if (!username || !password) { showToast('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'err'); return; }
+  const emp = await db.employees.getByUsername(username);
+  if (!emp) { showToast('ไม่พบผู้ใช้', 'err'); return; }
+  if (emp.password !== password) { showToast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
+  if (emp.status !== 'active') { showToast('บัญชีถูกระงับ', 'err'); return; }
+  currentUser = emp;
+  localStorage.setItem('currentUser', JSON.stringify(emp));
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  updateNavForRole();
+  updateUserDisplay();
+  goSec('dashboard');
+  showToast(`ยินดีต้อนรับ ${emp.name}`);
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem('currentUser');
+  updateNavForRole();
+  updateUserDisplay();
+  goSec('login');
+  showToast('ออกจากระบบแล้ว');
+}
+
+function updateNavForRole() {
+  document.querySelectorAll('.nb').forEach(btn => {
+    const sec = btn.dataset.s;
+    if (sec === 'employees') {
+      btn.style.display = (currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')) ? '' : 'none';
+    } else if (sec !== 'login' && sec !== 'settings') {
+      btn.style.display = currentUser ? '' : 'none';
+    } else if (sec === 'settings') {
+      btn.style.display = (currentUser && currentUser.role === 'admin') ? '' : 'none';
+    }
+  });
+}
+
+function updateUserDisplay() {
+  const hdrUser = document.getElementById('hdr-user');
+  const userName = document.getElementById('user-name');
+  if (currentUser) {
+    hdrUser.style.display = 'flex';
+    userName.textContent = currentUser.name + ' (' + currentUser.role + ')';
+  } else {
+    hdrUser.style.display = 'none';
+  }
+}
+
+function checkLogin() {
+  const saved = localStorage.getItem('currentUser');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      updateNavForRole();
+      updateUserDisplay();
+      goSec('dashboard');
+    } catch(e) {
+      goSec('login');
+    }
+  } else {
+    goSec('login');
+  }
+}
+
+// =============================================================
+// EMPLOYEE MANAGEMENT
+// =============================================================
+async function loadEmployees() {
+  const emps = await db.employees.getAll();
+  const list = document.getElementById('emp-list');
+  if (!emps.length) { list.innerHTML = '<div class="empty">ไม่มีพนักงาน</div>'; return; }
+  list.innerHTML = emps.map(e => {
+    const roleLabel = e.role === 'admin' ? 'ผู้ดูแลระบบ' : e.role === 'manager' ? 'ผู้จัดการ' : 'พนักงาน';
+    const roleColor = e.role === 'admin' ? 'var(--danger)' : e.role === 'manager' ? 'var(--warning)' : 'var(--info)';
+    return `<div class="cc">
+      <div>
+        <div class="ccn">${e.name}</div>
+        <div class="ccm">${e.username} | ${e.phone || '-'}</div>
+        <div style="color:${roleColor};font-size:11px;font-weight:600">${roleLabel}</div>
+      </div>
+      <div class="ccb">
+        <div style="font-size:11px;color:${e.status==='active'?'green':'red'}">${e.status==='active'?'✅ ใช้งาน':'❌ ระงับ'}</div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button onclick="editEmployee(${e.id})" style="background:var(--info);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✏️</button>
+          <button onclick="deleteEmployee(${e.id})" style="background:var(--danger);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addEmployee() {
+  const username = document.getElementById('emp-username').value.trim();
+  const name = document.getElementById('emp-name').value.trim();
+  const password = document.getElementById('emp-password').value;
+  const phone = document.getElementById('emp-phone').value.trim();
+  const role = document.getElementById('emp-role').value;
+  if (!username || !name || !password || !role) { showToast('กรุณากรอกข้อมูลให้ครบ', 'err'); return; }
+  const exist = await db.employees.getByUsername(username);
+  if (exist) { showToast('ชื่อผู้ใช้นี้มีอยู่แล้ว', 'err'); return; }
+  await db.employees.add({ username, name, password, phone, role, status: 'active' });
+  showToast('เพิ่มพนักงานสำเร็จ');
+  document.getElementById('emp-username').value = '';
+  document.getElementById('emp-name').value = '';
+  document.getElementById('emp-password').value = '';
+  document.getElementById('emp-phone').value = '';
+  document.getElementById('emp-role').value = '';
+  loadEmployees();
+}
+
+async function deleteEmployee(id) {
+  if (!confirm('ลบพนักงานคนนี้?')) return;
+  await db.employees.delete(id);
+  showToast('ลบพนักงานแล้ว');
+  loadEmployees();
+}
+
+async function editEmployee(id) {
+  const emp = await db.employees.getById(id);
+  if (!emp) return;
+  const newName = prompt('ชื่อ:', emp.name);
+  if (!newName) return;
+  const newPhone = prompt('เบอร์:', emp.phone || '');
+  const newRole = prompt('ตำแหน่ง (admin/manager/staff):', emp.role);
+  const newPass = prompt('รหัสผ่านใหม่ (เว้นว่างไม่เปลี่ยน):');
+  const updates = { name: newName, phone: newPhone || '', role: newRole || emp.role };
+  if (newPass) updates.password = newPass;
+  await db.employees.update(id, updates);
+  showToast('อัปเดตข้อมูลสำเร็จ');
+  loadEmployees();
+}
 
 // =============================================================
 // NAVIGATION
@@ -19,12 +158,14 @@ function goSec(id) {
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('.nb').forEach(b => b.classList.toggle('active', b.dataset.s === id));
   document.querySelector('.body').scrollTop = 0;
-  if (id === 'dashboard') loadDash();
+  if (id === 'login') { /* stay on login */ }
+  else if (id === 'dashboard') loadDash();
   else if (id === 'checkin') loadCIRooms();
   else if (id === 'rooms') loadRooms();
   else if (id === 'customers') loadCusts();
   else if (id === 'accounting') loadAcc();
   else if (id === 'settings') loadSettings();
+  else if (id === 'employees') loadEmployees();
 }
 
 function closeQuickPopup(e, id) {
@@ -1194,11 +1335,11 @@ function dlCSV(csv, filename) {
 // APP INIT
 // =============================================================
 async function appInit() {
+  checkLogin();
   appSettings = await db.settings.get();
   const today = moment().format('YYYY-MM-DD');
   document.getElementById('ci-date').value = today;
   document.getElementById('co-date').value = moment().add(1, 'day').format('YYYY-MM-DD');
   document.getElementById('acc-date').value = today;
   document.getElementById('dep').value = appSettings?.depositAmount || 200;
-  await loadDash();
 }

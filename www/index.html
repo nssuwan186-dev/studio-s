@@ -42,7 +42,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
 /* BOTTOM NAV */
-.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(7,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom);}
+.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(8,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom);}
 .nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--muted);font-size:9px;font-weight:500;cursor:pointer;padding:5px 2px;transition:color .2s;}
 .nb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;}
 .nb.active{color:var(--primary);}
@@ -265,8 +265,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="hdr-icon">🏨</div>
     <div><div class="hdr-title">VIPAT Hotel</div><div class="hdr-sub">ระบบจัดการ v4.1</div></div>
   </div>
-  <div class="hdr-status"><div class="pulse"></div>พร้อมใช้งาน</div>
+  <div class="hdr-status" id="hdr-user" style="display:none"><span id="user-name"></span> | <a href="#" onclick="logout()" style="color:#fff">ออก</a></div>
 </header>
+
+<!-- LOGIN -->
+<section id="login" class="sec">
+  <div style="text-align:center;padding:40px 20px">
+    <div style="font-size:48px;margin-bottom:20px">🏨</div>
+    <div style="font-size:24px;font-weight:700;margin-bottom:8px;color:var(--primary)">VIPAT Hotel</div>
+    <div style="color:var(--muted);margin-bottom:40px">ระบบจัดการโรงแรม v4.1</div>
+    <input type="text" id="login-user" class="inp" placeholder="ชื่อผู้ใช้" style="margin-bottom:12px">
+    <input type="password" id="login-pass" class="inp" placeholder="รหัสผ่าน" style="margin-bottom:20px">
+    <button onclick="login()" class="btn bp" style="width:100%">เข้าสู่ระบบ</button>
+    <div style="margin-top:20px;font-size:12px;color:var(--muted)">
+      ทดสอบ: admin/admin123, manager/manager123, staff/staff123
+    </div>
+  </div>
+</section>
 
 <div class="body">
 
@@ -527,6 +542,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </section>
 
+  <!-- EMPLOYEES -->
+  <section id="employees" class="sec">
+    <div class="ptitle">👥 พนักงาน</div>
+    <div class="card">
+      <div class="ctitle">➕ เพิ่มพนักงาน</div>
+      <input type="text" id="emp-username" class="inp" placeholder="ชื่อผู้ใช้ *" style="margin-bottom:8px">
+      <input type="text" id="emp-name" class="inp" placeholder="ชื่อ-นามสกุล *" style="margin-bottom:8px">
+      <input type="password" id="emp-password" class="inp" placeholder="รหัสผ่าน *" style="margin-bottom:8px">
+      <input type="tel" id="emp-phone" class="inp" placeholder="เบอร์โทร" style="margin-bottom:8px">
+      <select id="emp-role" class="inp" style="margin-bottom:8px">
+        <option value="">-- เลือกตำแหน่ง --</option>
+        <option value="admin">ผู้ดูแลระบบ</option>
+        <option value="manager">ผู้จัดการ</option>
+        <option value="staff">พนักงาน</option>
+      </select>
+      <button onclick="addEmployee()" class="btn bp" style="width:100%">➕ เพิ่มพนักงาน</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">📋 รายชื่อพนักงาน</div>
+      <div id="emp-list"></div>
+    </div>
+  </section>
+
   <!-- IMPORT -->
   <section id="import" class="sec">
     <div class="ptitle">📥 Import / ข้อมูล</div>
@@ -558,14 +596,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <!-- BOTTOM NAV -->
 <nav class="bnav">
-  <button class="nb active" data-s="dashboard" onclick="goSec('dashboard')">
+  <button class="nb" data-s="login" onclick="goSec('login')">
+    <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>เข้าใช้
+  </button>
+  <button class="nb" data-s="dashboard" onclick="goSec('dashboard')">
     <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>หน้าหลัก
   </button>
   <button class="nb" data-s="checkin" onclick="goSec('checkin')">
     <svg viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/><path d="M17.5 3.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z"/></svg>เช็คอิน
   </button>
   <button class="nb" data-s="rooms" onclick="goSec('rooms')">
-    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ห้องพัก
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>ห้อง
   </button>
   <button class="nb" data-s="accounting" onclick="goSec('accounting')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>บัญชี
@@ -573,8 +614,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="nb" data-s="reports" onclick="goSec('reports')">
     <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>รายงาน
   </button>
-  <button class="nb" data-s="import" onclick="goSec('import')">
-    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Import
+  <button class="nb" data-s="employees" onclick="goSec('employees')">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>พนักงาน
   </button>
   <button class="nb" data-s="settings" onclick="goSec('settings')">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>ตั้งค่า

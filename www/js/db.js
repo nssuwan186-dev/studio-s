@@ -9,7 +9,8 @@ const DB_KEYS = {
   bookings: 'resort_bookings',
   transactions: 'resort_transactions',
   settings: 'resort_settings',
-  images: 'resort_images'
+  images: 'resort_images',
+  employees: 'resort_employees'
 };
 
 const imgStorage = {
@@ -69,6 +70,14 @@ function seedDefaultData() {
   if (!localStorage.getItem(DB_KEYS.bookings))     localStorage.setItem(DB_KEYS.bookings, JSON.stringify([]));
   if (!localStorage.getItem(DB_KEYS.transactions)) localStorage.setItem(DB_KEYS.transactions, JSON.stringify([]));
   if (!localStorage.getItem(DB_KEYS.settings))     localStorage.setItem(DB_KEYS.settings, JSON.stringify({openingBalance:4037,depositAmount:200,electricRate:8,waterRate:25}));
+  if (!localStorage.getItem(DB_KEYS.employees)) {
+    const employees = [
+      {id:1, username:'admin', password:'admin123', name:'ผู้ดูแลระบบ', role:'admin', phone:'081-234-5678', status:'active', created_at:new Date().toISOString()},
+      {id:2, username:'manager', password:'manager123', name:'ผู้จัดการ', role:'manager', phone:'082-345-6789', status:'active', created_at:new Date().toISOString()},
+      {id:3, username:'staff', password:'staff123', name:'พนักงาน', role:'staff', phone:'083-456-7890', status:'active', created_at:new Date().toISOString()}
+    ];
+    localStorage.setItem(DB_KEYS.employees, JSON.stringify(employees));
+  }
 }
 
 function _get(key) { return JSON.parse(localStorage.getItem(key) || '[]'); }
@@ -224,6 +233,26 @@ const db = {
     update: async (updates) => {
       const s = JSON.parse(localStorage.getItem(DB_KEYS.settings) || '{}');
       _set(DB_KEYS.settings, {...s, ...updates});
+    }
+  },
+
+  employees: {
+    getAll: async () => _get(DB_KEYS.employees),
+    getById: async (id) => _get(DB_KEYS.employees).find(e => e.id === id) || null,
+    getByUsername: async (username) => _get(DB_KEYS.employees).find(e => e.username === username) || null,
+    add: async (employee) => {
+      const rows = _get(DB_KEYS.employees);
+      rows.push({...employee, id: Date.now(), created_at: new Date().toISOString()});
+      _set(DB_KEYS.employees, rows);
+    },
+    update: async (id, updates) => {
+      const rows = _get(DB_KEYS.employees);
+      const idx = rows.findIndex(e => e.id === id);
+      if (idx !== -1) { rows[idx] = {...rows[idx], ...updates, updated_at: new Date().toISOString()}; _set(DB_KEYS.employees, rows); }
+    },
+    delete: async (id) => {
+      const rows = _get(DB_KEYS.employees);
+      _set(DB_KEYS.employees, rows.filter(e => e.id !== id));
     }
   }
 };
