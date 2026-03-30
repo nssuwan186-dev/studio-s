@@ -18,21 +18,19 @@ jobs:
 
       - uses: android-actions/setup-android@v2
 
-      - name: Prepare directories
-        run: |
-          mkdir -p android/app/src/main/assets/public
+      - name: Create web directory
+        run: mkdir -p android/app/src/main/assets/public
 
-      - name: Copy files
-        run: |
-          cp -r www/* android/app/src/main/assets/public/
+      - name: Copy web files
+        run: cp -r www/* android/app/src/main/assets/public/
 
-      - name: Build
+      - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --stacktrace 2>&1 | tail -100
-        continue-on-error: true
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: VIPAT-Hotel-v4.1.apk
