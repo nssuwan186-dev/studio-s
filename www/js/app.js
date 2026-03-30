@@ -965,11 +965,18 @@ async function expJSON() {
     db.rooms.getAll(), db.settings.get()
   ]);
   const data = { customers: custs, bookings: bks, transactions: txs, rooms, settings, exportDate: new Date().toISOString(), version: '4.0' };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `vipat-backup-${moment().format('YYYYMMDD')}.json`;
-  a.click();
+  const jsonStr = JSON.stringify(data, null, 2);
+  const filename = `vipat-backup-${moment().format('YYYYMMDD')}.json`;
+  
+  if (window.AndroidDownload) {
+    window.AndroidDownload.downloadFile(jsonStr, filename, 'application/json');
+  } else {
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
   showToast('📤 Export JSON สำเร็จ');
 }
 
@@ -1002,11 +1009,15 @@ function impJSON(e) {
 // UTILS
 // =============================================================
 function dlCSV(csv, filename) {
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
+  if (window.AndroidDownload) {
+    window.AndroidDownload.downloadFile('\uFEFF' + csv, filename, 'text/csv;charset=utf-8');
+  } else {
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  }
 }
 
 // =============================================================
