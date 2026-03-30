@@ -1,13 +1,14 @@
 /**
- * VIPAT Hotel Manager v4
- * รวม: SQLite + OCR + Auto-complete + 51 ห้อง + Import CSV + รูปใบเสร็จ
+ * VIPAT Hotel Manager v4.1
+ * รวม: SQLite + OCR + Auto-complete + 51 ห้อง + Import CSV + รูปใบเสร็จ + Settings
  */
 
 let selCust = null;
 let curSec = 'dashboard';
 let curFilter = 'all';
 let curRoomId = null;
-let histData = null; // ข้อมูลประวัติสำหรับ auto-fill
+let histData = null;
+let appSettings = null;
 
 // =============================================================
 // NAVIGATION
@@ -23,6 +24,71 @@ function goSec(id) {
   else if (id === 'rooms') loadRooms();
   else if (id === 'customers') loadCusts();
   else if (id === 'accounting') loadAcc();
+  else if (id === 'settings') loadSettings();
+}
+
+// =============================================================
+// SETTINGS
+// =============================================================
+async function loadSettings() {
+  appSettings = await db.settings.get();
+  document.getElementById('set-open').value = appSettings.openingBalance || 0;
+  document.getElementById('set-dep').value = appSettings.depositAmount || 200;
+  document.getElementById('set-elec').value = appSettings.electricRate || 8;
+  document.getElementById('set-water').value = appSettings.waterRate || 25;
+  const rooms = await db.rooms.getAll();
+  const aCount = rooms.filter(r => r.building === 'A').length;
+  const bCount = rooms.filter(r => r.building === 'B').length;
+  const nCount = rooms.filter(r => r.building === 'N').length;
+  document.getElementById('set-count-a').value = aCount;
+  document.getElementById('set-count-b').value = bCount;
+  document.getElementById('set-count-n').value = nCount;
+}
+
+async function saveSettings() {
+  const settings = {
+    openingBalance: parseInt(document.getElementById('set-open').value) || 0,
+    depositAmount: parseInt(document.getElementById('set-dep').value) || 200,
+    electricRate: parseInt(document.getElementById('set-elec').value) || 8,
+    waterRate: parseInt(document.getElementById('set-water').value) || 25
+  };
+  await db.settings.update(settings);
+  appSettings = settings;
+  showToast('บันทึกการตั้งค่าแล้ว');
+  loadDash();
+}
+
+async function regenRooms() {
+  if (!confirm('สร้างห้องใหม่ทั้งหมด? ข้อมูลการจองจะถูกลบ')) return;
+  const a = parseInt(document.getElementById('set-count-a').value) || 11;
+  const b = parseInt(document.getElementById('set-count-b').value) || 11;
+  const n = parseInt(document.getElementById('set-count-n').value) || 7;
+  const rooms = [];
+  let id = 1;
+  for (let i = 1; i <= a; i++) {
+    const floor = i <= 5 ? 1 : 2;
+    rooms.push({ id: id++, room_number: `A10${i}`, building: 'A', floor, room_type: i === 3 || i === 8 ? 'Standard Twin' : 'Standard', price_per_night: i === 3 || i === 8 ? 500 : 400, status: 'available' });
+  }
+  for (let i = 1; i <= b; i++) {
+    const floor = i <= 5 ? 1 : 2;
+    rooms.push({ id: id++, room_number: `B10${i}`, building: 'B', floor, room_type: i === 3 || i === 8 || i === 19 ? 'Standard Twin' : 'Standard', price_per_night: i === 3 || i === 8 || i === 19 ? 500 : 400, status: 'available' });
+  }
+  for (let i = 1; i <= n; i++) {
+    rooms.push({ id: id++, room_number: `N${i}`, building: 'N', floor: 1, room_type: i === 2 || i === 4 || i === 7 ? 'Standard Twin' : 'Standard', price_per_night: i === 2 || i === 4 || i === 7 ? 600 : 500, status: 'available' });
+  }
+  localStorage.setItem('resort_rooms', JSON.stringify(rooms));
+  localStorage.setItem('resort_bookings', JSON.stringify([]));
+  localStorage.setItem('resort_transactions', JSON.stringify([]));
+  showToast(`สร้างห้องใหม่ ${rooms.length} ห้อง`);
+  loadSettings();
+  loadDash();
+}
+
+async function clearAllData() {
+  if (!confirm('⚠️ ล้างข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้')) return;
+  localStorage.clear();
+  seedDefaultData();
+  location.reload();
 }
 
 function showToast(msg, type = 'ok') {
@@ -37,7 +103,8 @@ function showToast(msg, type = 'ok') {
 // DASHBOARD
 // =============================================================
 async function loadDash() {
-  const [rooms, active, settings] = await Promise.all([db.rooms.getAll(), db.bookings.getActive(), db.settings.get()]);
+  appSettings = await db.settings.get();
+  const [rooms, active] = await Promise.all([db.rooms.getAll(), db.bookings.getActive()]);
   const today = moment().format('YYYY-MM-DD');
   const [todayBk, todayTx] = await Promise.all([db.bookings.getByDate(today), db.transactions.getByDate(today)]);
 
@@ -48,7 +115,7 @@ async function loadDash() {
 
   const inc = todayTx.reduce((s, t) => s + (t.receipt || 0), 0);
   const exp = todayTx.reduce((s, t) => s + (t.payment || 0), 0);
-  const op = settings.openingBalance || 0;
+  const op = appSettings?.openingBalance || 0;
   document.getElementById('dash-income').textContent = `฿${inc.toLocaleString()}`;
   document.getElementById('dash-expense').textContent = `฿${exp.toLocaleString()}`;
   document.getElementById('dash-balance').textContent = `฿${(op + inc - exp).toLocaleString()}`;
@@ -70,6 +137,8 @@ async function loadDash() {
 // =============================================================
 // OCR - สแกนบัตรประชาชน
 // =============================================================
+let currentOCRImage = null;
+
 async function handleOCR(input) {
   const file = input.files[0];
   if (!file) return;
@@ -80,44 +149,62 @@ async function handleOCR(input) {
   status.className = 'ocr-status wait';
   status.textContent = '⏳ กำลังสแกนบัตร... รอสักครู่';
 
-  try {
-    // ใช้ Tesseract.js ถ้าโหลดได้ ไม่งั้น fallback
-    if (typeof Tesseract !== 'undefined') {
-      const result = await Tesseract.recognize(file, 'tha+eng', { logger: m => console.log(m) });
-      const text = result.data.text;
-      parseIDCard(text);
-      status.className = 'ocr-status ok';
-      status.textContent = '✅ สแกนสำเร็จ! ตรวจสอบข้อมูลด้านล่าง';
-    } else {
-      // Manual preview fallback
-      const reader = new FileReader();
-      reader.onload = e => {
+  const reader = new FileReader();
+  reader.onload = async e => {
+    currentOCRImage = e.target.result;
+    try {
+      if (typeof Tesseract !== 'undefined') {
+        status.textContent = '⏳ กำลังประมวลผล OCR...';
+        const result = await Tesseract.recognize(file, 'tha+eng', { logger: m => console.log(m) });
+        const text = result.data.text;
+        parseIDCard(text);
+        status.className = 'ocr-status ok';
+        status.innerHTML = `✅ สแกนสำเร็จ!<br><small>ตรวจสอบข้อมูลด้านล่าง</small><br><img src="${e.target.result}" style="max-width:120px;border-radius:6px;margin-top:6px;border:2px solid var(--accent)">`;
+      } else {
         status.className = 'ocr-status wait';
-        status.innerHTML = '⚠️ OCR ไม่พร้อม กรุณากรอกข้อมูลด้วยตนเอง<br><img src="'+e.target.result+'" style="max-width:100%;border-radius:8px;margin-top:6px">';
-      };
-      reader.readAsDataURL(file);
+        status.innerHTML = `⚠️ OCR ไม่พร้อมใช้งาน<br>กรุณากรอกข้อมูลด้วยตนเอง<br><img src="${e.target.result}" style="max-width:100%;border-radius:8px;margin-top:6px">`;
+      }
+    } catch (err) {
+      status.className = 'ocr-status err';
+      status.innerHTML = `❌ สแกนไม่สำเร็จ<br><img src="${e.target.result}" style="max-width:100%;border-radius:8px;margin-top:6px">`;
     }
-  } catch (err) {
-    status.className = 'ocr-status err';
-    status.textContent = '❌ สแกนไม่สำเร็จ กรุณากรอกข้อมูลด้วยตนเอง';
-  }
-  box.classList.remove('scanning');
+    box.classList.remove('scanning');
+  };
+  reader.readAsDataURL(file);
 }
 
 function parseIDCard(text) {
-  // แยกเลขบัตร
-  const idMatch = text.match(/\d[\s-]?\d{4}[\s-]?\d{5}[\s-]?\d{2}[\s-]?\d/);
+  const cleanText = text.replace(/\n/g, ' ').trim();
+  
+  const idMatch = cleanText.match(/(\d[\d\s-]{12,17}\d)/);
   if (idMatch) {
     const idNum = idMatch[0].replace(/[\s-]/g, '');
-    // ค้นหาลูกค้าในระบบด้วยเลขบัตร
-    findCustByIdCard(idNum);
+    if (idNum.length >= 13) {
+      findCustByIdCard(idNum);
+    }
   }
-  // แยกชื่อ
-  const nameMatch = text.match(/(นาย|นาง(?:สาว)?|Mr\.|Mrs\.|Miss\.?)\s*([^\n\r]+)/);
-  if (nameMatch) {
-    const name = nameMatch[0].trim();
-    document.getElementById('csearch').value = name;
-    searchCust(name);
+  
+  const namePatterns = [
+    /(?:นาย|นาง|นางสาว|Mr\.|Mrs\.|Miss\.?|Ms\.?)\s+([ก-๏\s]+)/i,
+    /ชื่อ\s*[:\-]?\s*([ก-๏\s]+)/i,
+    /Name\s*[:\-]?\s*([ก-๏\s]+)/i
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = cleanText.match(pattern);
+    if (match && match[1]) {
+      const name = match[1].trim().split(' ').slice(0, 3).join(' ');
+      if (name.length > 2) {
+        document.getElementById('csearch').value = name;
+        searchCust(name);
+        break;
+      }
+    }
+  }
+  
+  const addrMatch = cleanText.match(/(?:ที่อยู่|Address)[:\-]?\s*([ก-๏\d\s\/\-]+)/i);
+  if (addrMatch) {
+    console.log('Address found:', addrMatch[1]);
   }
 }
 
@@ -127,6 +214,18 @@ async function findCustByIdCard(idCard) {
     const c = customers[0];
     selectCust(c.customer_id, c.name, c.phone || '');
     showToast(`✅ พบลูกค้า: ${c.name}`);
+  } else {
+    const name = document.getElementById('csearch').value;
+    if (confirm(`ไม่พบลูกค้าเลขบัตร ${idCard}\nต้องการสร้างลูกค้าใหม่หรือไม่?`)) {
+      const newName = prompt('ชื่อลูกค้า:', name || '');
+      if (newName) {
+        const phone = prompt('เบอร์โทร:', '') || '';
+        const id = await db.customers.generateId();
+        await db.customers.add({ customer_id: id, name: newName, phone, address: '', id_card: idCard });
+        selectCust(id, newName, phone);
+        showToast('เพิ่มลูกค้าใหม่สำเร็จ');
+      }
+    }
   }
 }
 
@@ -283,9 +382,14 @@ async function submitCI() {
   const paid = parseFloat(document.getElementById('paid').value) || 0;
   if (paid < total) { showToast('จำนวนเงินไม่พอ', 'err'); return; }
   const room = await db.rooms.getById(roomId);
+  const paymentMethod = document.querySelector('input[name="pm"]:checked')?.value || 'cash';
   const bk = {
     booking_id: Calculator.generateBookingId(),
-    customer_id: selCust.id, room_id: roomId,
+    customer_id: selCust.id,
+    customer_name: selCust.name,
+    room_id: roomId,
+    room_number: room?.room_number || '',
+    building: room?.building || '',
     check_in_date: ci, check_out_date: co,
     nights: parseInt(document.getElementById('nights').value),
     room_rate: parseFloat(document.getElementById('rrate').value) || 0,
@@ -295,15 +399,25 @@ async function submitCI() {
     discount: parseFloat(document.getElementById('disc').value) || 0,
     deposit: parseFloat(document.getElementById('dep').value) || 0,
     total_amount: total, amount_paid: paid, change_amount: paid - total,
-    payment_method: document.querySelector('input[name="pm"]:checked')?.value || 'cash',
+    payment_method: paymentMethod,
     status: 'checked_in', notes: document.getElementById('notes').value,
     created_at: new Date().toISOString()
   };
   await db.rooms.update(roomId, { status: 'occupied' });
   await db.bookings.add(bk);
   await db.transactions.add({
-    date: ci, item_name: `ค่าห้องพัก - ${bk.booking_id}`, category: 'income',
-    room_number: room?.room_number || '', receipt: total - bk.deposit, deposit_cash: bk.deposit, notes: bk.notes
+    date: ci,
+    booking_id: bk.booking_id,
+    item_name: `ค่าห้องพัก - ${room?.room_number || ''}`,
+    category: 'income',
+    room_number: room?.room_number || '',
+    room_id: roomId,
+    customer_id: selCust.id,
+    customer_name: selCust.name,
+    receipt: total - bk.deposit,
+    deposit_cash: bk.deposit,
+    payment_method: paymentMethod,
+    notes: bk.notes
   });
   await db.customers.updateStats(selCust.id, 1, total, ci);
   showToast('✅ เช็คอินสำเร็จ!');
@@ -321,7 +435,7 @@ function clearForm() {
   document.getElementById('rinfo').style.display = 'none';
   document.getElementById('efee').value = 0;
   document.getElementById('wfee').value = 0;
-  document.getElementById('dep').value = 200;
+  document.getElementById('dep').value = appSettings?.depositAmount || 200;
   document.getElementById('disc').value = 0;
   document.getElementById('paid').value = '';
   document.getElementById('notes').value = '';
@@ -329,7 +443,9 @@ function clearForm() {
   document.getElementById('tbd').innerHTML = '';
   document.getElementById('chg-disp').innerHTML = '';
   document.getElementById('ocr-status').style.display = 'none';
+  document.getElementById('ocr-status').innerHTML = '';
   document.getElementById('ocr-input').value = '';
+  currentOCRImage = null;
   const today = moment().format('YYYY-MM-DD');
   document.getElementById('ci-date').value = today;
   document.getElementById('co-date').value = moment().add(1, 'day').format('YYYY-MM-DD');
@@ -386,37 +502,50 @@ async function openRoomSheet(roomId) {
   const room = await db.rooms.getById(roomId);
   if (!room) return;
   const statusMap = { available: '✅ ว่าง', occupied: '🟡 มีผู้พัก', maintenance: '🔴 ซ่อมบำรุง', cleaning: '🔵 ทำความสะอาด' };
-  document.getElementById('sheet-title').textContent = `ห้อง ${room.room_number}`;
+  const typeEmoji = { 'Standard': '🛏️', 'Standard Twin': '🛏️🛏️', 'Deluxe': '⭐', 'Suite': '👑' };
+  document.getElementById('sheet-title').textContent = `${typeEmoji[room.room_type] || '🏠'} ห้อง ${room.room_number}`;
   let body = `
     <div class="drow2"><span class="dlbl">ตึก</span><span class="dval">${room.building}</span></div>
+    <div class="drow2"><span class="dlbl">ชั้น</span><span class="dval">${room.floor}</span></div>
     <div class="drow2"><span class="dlbl">ประเภท</span><span class="dval">${room.room_type}</span></div>
-    <div class="drow2"><span class="dlbl">ราคา/คืน</span><span class="dval">฿${room.price_per_night}</span></div>
+    <div class="drow2"><span class="dlbl">ราคา/คืน</span><span class="dval">฿${room.price_per_night.toLocaleString()}</span></div>
     <div class="drow2"><span class="dlbl">สถานะ</span><span class="dval">${statusMap[room.status] || room.status}</span></div>
   `;
-  // ถ้ามีผู้พัก แสดงข้อมูล
   if (room.status === 'occupied') {
     const active = await db.bookings.getActive();
     const bk = active.find(b => b.room_id == roomId);
     if (bk) {
       const cust = await db.customers.getById(bk.customer_id);
+      const nightsLeft = moment(bk.check_out_date).diff(moment(), 'days');
       body += `
         <div style="background:var(--primary);color:#fff;border-radius:var(--rs);padding:14px;margin-top:10px;">
-          <div style="font-weight:700;font-size:15px;margin-bottom:8px;">👤 ${cust?.name || bk.customer_id}</div>
-          <div style="font-size:12px;opacity:.8">${cust?.phone || '-'} | ${bk.booking_id}</div>
-          <div style="font-size:12px;opacity:.8;margin-top:4px">เช็คอิน: ${bk.check_in_date} → ${bk.check_out_date}</div>
-          <div style="font-size:14px;font-weight:700;margin-top:6px">ยอด: ฿${(bk.total_amount||0).toLocaleString()}</div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:8px;">👤 ${cust?.name || bk.customer_name || bk.customer_id}</div>
+          <div style="font-size:12px;opacity:.8">📱 ${cust?.phone || '-'} | ${bk.booking_id}</div>
+          <div style="font-size:12px;opacity:.8;margin-top:4px">📅 ${bk.check_in_date} → ${bk.check_out_date} (${nightsLeft} คืน)</div>
+          <div style="font-size:14px;font-weight:700;margin-top:6px">💰 ฿${(bk.total_amount||0).toLocaleString()} | ${bk.payment_method === 'cash' ? '💵' : bk.payment_method === 'transfer' ? '📱' : '🔳'} ${bk.payment_method}</div>
+          ${bk.notes ? `<div style="font-size:11px;margin-top:6px;opacity:.8">📝 ${bk.notes}</div>` : ''}
         </div>`;
       document.getElementById('sheet-btns').innerHTML = `
         <button onclick="editBooking('${bk.booking_id}')" class="btn bs bsm">✏️ แก้ไข</button>
-        <button onclick="doCheckout('${bk.booking_id}')" class="btn bd bsm">🚪 เช็คเอาท์</button>`;
+        <button onclick="doCheckout('${bk.booking_id}')" class="btn bd bsm">🚪 เช็คเอาท์</button>
+        <button onclick="viewBookingSlip('${bk.booking_id}')" class="btn bs bsm" style="grid-column:span 2">🧾 ดูสลิป</button>`;
     }
   } else {
     document.getElementById('sheet-btns').innerHTML = `
-      <button onclick="setRoomMaint(${roomId})" class="btn bs bsm">🔧 ซ่อมบำรุง</button>
-      <button onclick="goSec('checkin')" class="btn bp bsm">📝 เช็คอิน</button>`;
+      <button onclick="setRoomMaint(${roomId})" class="btn bs bsm">🔧 ซ่อม/ทำความสะอาด</button>
+      <button onclick="goSec('checkin');setTimeout(loadCIRooms,100)" class="btn bp bsm">📝 เช็คอิน</button>`;
   }
   document.getElementById('sheet-body').innerHTML = body;
   document.getElementById('room-sheet').classList.add('show');
+}
+
+async function viewBookingSlip(bookingId) {
+  const slip = await db.bookings.getImage(bookingId);
+  if (slip) {
+    viewImg(slip);
+  } else {
+    showToast('ไม่มีสลิป', 'err');
+  }
 }
 
 function closeSheet(e) {
@@ -438,23 +567,86 @@ async function doCheckout(bookingId) {
   if (!confirm('ยืนยันการเช็คเอาท์?')) return;
   const lateFee = parseFloat(prompt('ค่าปรับเช็คเอาท์สาย:', '0')) || 0;
   const dmg = parseFloat(prompt('ค่าปรับทรัพย์สิน:', '0')) || 0;
+  const extraCharge = parseFloat(prompt('ค่าใช้จ่ายเพิ่มเติม:', '0')) || 0;
   const all = await db.bookings.getAll();
   const bk = all.find(b => b.booking_id === bookingId);
   if (!bk) { showToast('ไม่พบการจอง', 'err'); return; }
-  await db.bookings.update(bookingId, { status: 'checked_out' });
+  await db.bookings.update(bookingId, { 
+    status: 'checked_out', 
+    check_out_time: new Date().toISOString(),
+    late_fee: lateFee,
+    damage_fee: dmg,
+    extra_charge: extraCharge
+  });
   await db.rooms.update(bk.room_id, { status: 'available' });
   const today = moment().format('YYYY-MM-DD');
-  if (lateFee > 0) await db.transactions.add({ date: today, item_name: `ค่าปรับสาย - ${bookingId}`, category: 'income', receipt: lateFee, notes: '' });
-  if (dmg > 0) await db.transactions.add({ date: today, item_name: `ค่าปรับทรัพย์สิน - ${bookingId}`, category: 'income', receipt: dmg, notes: '' });
+  if (lateFee > 0) {
+    await db.transactions.add({ 
+      date: today, 
+      booking_id: bookingId,
+      item_name: `ค่าปรับสาย - ${bk.room_number}`, 
+      category: 'income', 
+      room_number: bk.room_number,
+      receipt: lateFee, 
+      notes: '' 
+    });
+  }
+  if (dmg > 0) {
+    await db.transactions.add({ 
+      date: today, 
+      booking_id: bookingId,
+      item_name: `ค่าปรับทรัพย์สิน - ${bk.room_number}`, 
+      category: 'income', 
+      room_number: bk.room_number,
+      receipt: dmg, 
+      notes: '' 
+    });
+  }
+  if (extraCharge > 0) {
+    await db.transactions.add({ 
+      date: today, 
+      booking_id: bookingId,
+      item_name: `ค่าใช้จ่ายเพิ่มเติม - ${bk.room_number}`, 
+      category: 'income', 
+      room_number: bk.room_number,
+      receipt: extraCharge, 
+      notes: '' 
+    });
+  }
   document.getElementById('room-sheet').classList.remove('show');
   showToast('✅ เช็คเอาท์สำเร็จ');
   loadDash();
   if (curSec === 'rooms') loadRooms();
 }
 
-function editBooking(bookingId) {
+async function editBooking(bookingId) {
+  const all = await db.bookings.getAll();
+  const bk = all.find(b => b.booking_id === bookingId);
+  if (!bk) { showToast('ไม่พบการจอง', 'err'); return; }
+  
+  const newCI = prompt('เช็คอินใหม่ (YYYY-MM-DD):', bk.check_in_date);
+  if (!newCI) return;
+  const newCO = prompt('เช็คเอาท์ใหม่ (YYYY-MM-DD):', bk.check_out_date);
+  if (!newCO) return;
+  const newRate = parseFloat(prompt('ราคาใหม่/คืน:', bk.room_rate)) || bk.room_rate;
+  const newNotes = prompt('หมายเหตุ:', bk.notes || '') || '';
+  
+  const nights = Calculator.calculateNights(newCI, newCO);
+  const newTotal = newRate * nights;
+  
+  await db.bookings.update(bookingId, {
+    check_in_date: newCI,
+    check_out_date: newCO,
+    nights: nights,
+    room_rate: newRate,
+    room_total: newTotal,
+    total_amount: newTotal + (bk.electric_fee || 0) + (bk.water_fee || 0) - (bk.discount || 0),
+    notes: newNotes
+  });
+  
   document.getElementById('room-sheet').classList.remove('show');
-  showToast('ฟีเจอร์แก้ไขการจองกำลังพัฒนา');
+  showToast('แก้ไขการจองแล้ว');
+  loadRooms();
 }
 
 // =============================================================
@@ -471,7 +663,14 @@ async function loadCusts() {
         <div class="ccm">${c.customer_id} | ${c.phone || '-'}</div>
         ${c.id_card ? `<div class="ccm">บัตร: ${c.id_card}</div>` : ''}
       </div>
-      <div class="ccb"><div class="ccs">${c.total_stays || 0}</div><div class="ccsl">ครั้ง</div></div>
+      <div class="ccb">
+        <div class="ccs">${c.total_stays || 0}</div>
+        <div class="ccsl">ครั้ง</div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button onclick="editCust('${c.customer_id}')" style="background:var(--info);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✏️</button>
+          <button onclick="deleteCust('${c.customer_id}')" style="background:var(--danger);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑️</button>
+        </div>
+      </div>
     </div>`).join('');
 }
 
@@ -482,9 +681,47 @@ async function searchCustList() {
   if (!custs.length) { list.innerHTML = '<div class="empty">ไม่พบลูกค้า</div>'; return; }
   list.innerHTML = custs.map(c => `
     <div class="cc">
-      <div><div class="ccn">${c.name}</div><div class="ccm">${c.customer_id} | ${c.phone || '-'}</div></div>
-      <div class="ccb"><div class="ccs">${c.total_stays || 0}</div><div class="ccsl">ครั้ง</div></div>
+      <div>
+        <div class="ccn">${c.name}</div>
+        <div class="ccm">${c.customer_id} | ${c.phone || '-'}</div>
+        ${c.id_card ? `<div class="ccm">บัตร: ${c.id_card}</div>` : ''}
+      </div>
+      <div class="ccb">
+        <div class="ccs">${c.total_stays || 0}</div>
+        <div class="ccsl">ครั้ง</div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button onclick="editCust('${c.customer_id}')" style="background:var(--info);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">✏️</button>
+          <button onclick="deleteCust('${c.customer_id}')" style="background:var(--danger);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer">🗑️</button>
+        </div>
+      </div>
     </div>`).join('');
+}
+
+async function editCust(custId) {
+  const custs = await db.customers.getAll();
+  const c = custs.find(x => x.customer_id === custId);
+  if (!c) return;
+  const name = prompt('ชื่อลูกค้า:', c.name);
+  if (!name) return;
+  const phone = prompt('เบอร์โทร:', c.phone || '') || '';
+  const idCard = prompt('เลขบัตรประชาชน:', c.id_card || '') || '';
+  const all = await db.customers.getAll();
+  const idx = all.findIndex(x => x.customer_id === custId);
+  if (idx !== -1) {
+    all[idx] = { ...all[idx], name, phone, id_card: idCard };
+    localStorage.setItem('resort_customers', JSON.stringify(all));
+    showToast('แก้ไขลูกค้าแล้ว');
+    loadCusts();
+  }
+}
+
+async function deleteCust(custId) {
+  if (!confirm('ลบลูกค้า?')) return;
+  const all = await db.customers.getAll();
+  const filtered = all.filter(c => c.customer_id !== custId);
+  localStorage.setItem('resort_customers', JSON.stringify(filtered));
+  showToast('ลบลูกค้าแล้ว');
+  loadCusts();
 }
 
 // =============================================================
@@ -492,7 +729,8 @@ async function searchCustList() {
 // =============================================================
 async function loadAcc() {
   const date = document.getElementById('acc-date').value;
-  const [txs, settings] = await Promise.all([db.transactions.getByDate(date), db.settings.get()]);
+  const txs = await db.transactions.getByDate(date);
+  const settings = await db.settings.get();
   const inc = txs.reduce((s, t) => s + (t.receipt || 0), 0);
   const exp = txs.reduce((s, t) => s + (t.payment || 0), 0);
   const op = settings.openingBalance || 0;
@@ -503,23 +741,40 @@ async function loadAcc() {
   const list = document.getElementById('tx-list');
   if (!txs.length) { list.innerHTML = '<div class="empty">ไม่มีรายการ</div>'; return; }
   let bal = op;
-  list.innerHTML = txs.map(t => {
+  list.innerHTML = await Promise.all(txs.map(async t => {
     bal += (t.receipt || 0) - (t.payment || 0);
-    const hasImg = t.receipt_image && t.receipt_image.length > 10;
+    const slipImg = await db.transactions.getImage(t.id);
+    const hasImg = slipImg && slipImg.length > 10;
+    const pmIcon = t.payment_method === 'cash' ? '💵' : t.payment_method === 'transfer' ? '📱' : t.payment_method === 'qrcode' ? '🔳' : '';
     return `<div class="txi" id="tx-${t.id}">
       <div style="flex:1">
-        <div class="txn">${t.item_name}</div>
-        <div class="txm">${t.room_number || '-'} ${t.notes ? '· ' + t.notes : ''}</div>
-        ${hasImg ? `<img src="${t.receipt_image}" style="height:44px;border-radius:6px;border:1px solid var(--border);margin-top:5px;cursor:pointer" onclick="viewImg('${t.id}')">` : ''}
+        <div class="txn">${t.item_name} ${pmIcon}</div>
+        <div class="txm">${t.room_number || '-'} ${t.customer_name ? '· ' + t.customer_name : ''} ${t.notes ? '· ' + t.notes : ''}</div>
+        ${hasImg ? `<img src="${slipImg}" style="height:44px;border-radius:6px;border:1px solid var(--border);margin-top:5px;cursor:pointer" onclick="viewTxImg('${t.id}')">` : ''}
       </div>
       <div style="text-align:right;min-width:88px">
         ${t.receipt > 0 ? `<div class="txp">+฿${t.receipt.toLocaleString()}</div>` : ''}
         ${t.payment > 0 ? `<div class="txng">-฿${t.payment.toLocaleString()}</div>` : ''}
         <div class="txb">฿${bal.toLocaleString()}</div>
-        <button onclick="attachImg(${t.id})" style="margin-top:3px;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:10px;cursor:pointer">📎${hasImg ? ' เปลี่ยน' : ' แนบ'}</button>
+        <div style="display:flex;gap:3px;margin-top:3px">
+          <button onclick="attachImg(${t.id})" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:10px;cursor:pointer">📎${hasImg ? '' : '-slip'}</button>
+          <button onclick="deleteTx(${t.id})" style="background:var(--danger-light);border:1px solid var(--danger);border-radius:5px;padding:3px 6px;font-size:10px;cursor:pointer">🗑️</button>
+        </div>
       </div>
     </div>`;
-  }).join('');
+  }));
+}
+
+async function viewTxImg(txId) {
+  const img = await db.transactions.getImage(txId);
+  if (img) viewImg(img);
+}
+
+async function deleteTx(txId) {
+  if (!confirm('ลบรายการนี้?')) return;
+  await db.transactions.delete(txId);
+  showToast('ลบรายการแล้ว');
+  loadAcc();
 }
 
 async function addTx() {
@@ -527,10 +782,16 @@ async function addTx() {
   if (!item) return;
   const isInc = confirm('เป็นรายรับ? (Cancel = รายจ่าย)');
   const amt = parseFloat(prompt('จำนวนเงิน:')) || 0;
+  const roomNum = isInc ? prompt('หมายเลขห้อง (ถ้ามี):') || '' : '';
+  const notes = prompt('หมายเหตุ:') || '';
   await db.transactions.add({
     date: document.getElementById('acc-date').value,
-    item_name: item, category: isInc ? 'income' : 'expense',
-    receipt: isInc ? amt : 0, payment: isInc ? 0 : amt, notes: ''
+    item_name: item, 
+    category: isInc ? 'income' : 'expense',
+    room_number: roomNum,
+    receipt: isInc ? amt : 0, 
+    payment: isInc ? 0 : amt, 
+    notes: notes
   });
   showToast('บันทึกสำเร็จ');
   loadAcc();
@@ -752,9 +1013,11 @@ function dlCSV(csv, filename) {
 // APP INIT
 // =============================================================
 async function appInit() {
+  appSettings = await db.settings.get();
   const today = moment().format('YYYY-MM-DD');
   document.getElementById('ci-date').value = today;
   document.getElementById('co-date').value = moment().add(1, 'day').format('YYYY-MM-DD');
   document.getElementById('acc-date').value = today;
+  document.getElementById('dep').value = appSettings?.depositAmount || 200;
   await loadDash();
 }

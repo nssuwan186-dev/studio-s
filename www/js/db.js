@@ -8,7 +8,26 @@ const DB_KEYS = {
   customers: 'resort_customers',
   bookings: 'resort_bookings',
   transactions: 'resort_transactions',
-  settings: 'resort_settings'
+  settings: 'resort_settings',
+  images: 'resort_images'
+};
+
+const imgStorage = {
+  save: async (type, id, imageData) => {
+    const imgs = JSON.parse(localStorage.getItem(DB_KEYS.images) || '{}');
+    const key = `${type}_${id}`;
+    imgs[key] = imageData;
+    localStorage.setItem(DB_KEYS.images, JSON.stringify(imgs));
+  },
+  get: async (type, id) => {
+    const imgs = JSON.parse(localStorage.getItem(DB_KEYS.images) || '{}');
+    return imgs[`${type}_${id}`] || null;
+  },
+  delete: async (type, id) => {
+    const imgs = JSON.parse(localStorage.getItem(DB_KEYS.images) || '{}');
+    delete imgs[`${type}_${id}`];
+    localStorage.setItem(DB_KEYS.images, JSON.stringify(imgs));
+  }
 };
 
 function seedDefaultData() {
@@ -128,15 +147,30 @@ const db = {
     getActive: async () => _get(DB_KEYS.bookings).filter(b => b.status === 'checked_in'),
     getByDate: async (date) => _get(DB_KEYS.bookings).filter(b => b.check_in_date === date || b.check_out_date === date),
     getByDateRange: async (start, end) => _get(DB_KEYS.bookings).filter(b => b.check_in_date >= start && b.check_in_date <= end),
+    getByCustomer: async (custId) => _get(DB_KEYS.bookings).filter(b => b.customer_id === custId),
     add: async (booking) => {
       const rows = _get(DB_KEYS.bookings);
-      rows.push(booking);
+      rows.push({...booking, slip_image: booking.slip_image || '', created_at: new Date().toISOString()});
       _set(DB_KEYS.bookings, rows);
+      if (booking.slip_image) await imgStorage.save('booking', booking.booking_id, booking.slip_image);
     },
     update: async (bookingId, updates) => {
       const rows = _get(DB_KEYS.bookings);
       const idx = rows.findIndex(b => b.booking_id === bookingId);
-      if (idx !== -1) { rows[idx] = {...rows[idx], ...updates}; _set(DB_KEYS.bookings, rows); }
+      if (idx !== -1) {
+        rows[idx] = {...rows[idx], ...updates, updated_at: new Date().toISOString()};
+        _set(DB_KEYS.bookings, rows);
+        if (updates.slip_image) await imgStorage.save('booking', bookingId, updates.slip_image);
+      }
+    },
+    getImage: async (bookingId) => {
+      return await imgStorage.get('booking', bookingId);
+    },
+    delete: async (bookingId) => {
+      const rows = _get(DB_KEYS.bookings);
+      const filtered = rows.filter(b => b.booking_id !== bookingId);
+      _set(DB_KEYS.bookings, filtered);
+      await imgStorage.delete('booking', bookingId);
     }
   },
 
@@ -147,14 +181,37 @@ const db = {
     add: async (tx) => {
       const rows = _get(DB_KEYS.transactions);
       const id = Date.now();
-      rows.push({...tx, id});
+      rows.push({...tx, id, slip_image: tx.slip_image || '', created_at: new Date().toISOString()});
       _set(DB_KEYS.transactions, rows);
+      if (tx.slip_image) await imgStorage.save('tx', id, tx.slip_image);
       return id;
+    },
+    update: async (txId, updates) => {
+      const rows = _get(DB_KEYS.transactions);
+      const idx = rows.findIndex(t => t.id == txId);
+      if (idx !== -1) {
+        rows[idx] = {...rows[idx], ...updates};
+        _set(DB_KEYS.transactions, rows);
+      }
     },
     updateImage: async (txId, imageData) => {
       const rows = _get(DB_KEYS.transactions);
       const t = rows.find(t => t.id == txId);
-      if (t) { t.receipt_image = imageData; _set(DB_KEYS.transactions, rows); }
+      if (t) {
+        t.receipt_image = imageData;
+        t.slip_image = imageData;
+        _set(DB_KEYS.transactions, rows);
+        await imgStorage.save('tx', txId, imageData);
+      }
+    },
+    getImage: async (txId) => {
+      return await imgStorage.get('tx', txId);
+    },
+    delete: async (txId) => {
+      const rows = _get(DB_KEYS.transactions);
+      const filtered = rows.filter(t => t.id != txId);
+      _set(DB_KEYS.transactions, filtered);
+      await imgStorage.delete('tx', txId);
     }
   },
 

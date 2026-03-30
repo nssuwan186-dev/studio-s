@@ -39,7 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
 /* BOTTOM NAV */
-.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(6,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom);}
+.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(7,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom);}
 .nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--muted);font-size:9px;font-weight:500;cursor:pointer;padding:5px 2px;transition:color .2s;}
 .nb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;}
 .nb.active{color:var(--primary);}
@@ -246,6 +246,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* MISC */
 .empty{text-align:center;padding:24px 0;color:var(--muted);font-size:13px;}
 .sechdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+
+/* QUICK ACTIONS */
+.qbar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.qb{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--rs);padding:12px 6px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;}
+.qb:active{background:var(--primary-ultra);border-color:var(--accent);transform:scale(.97);}
+.qbi{font-size:20px;}
+.qb span:last-child{font-size:11px;font-weight:600;color:var(--text);}
 </style>
 </head>
 <body>
@@ -253,7 +260,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <header class="hdr">
   <div class="hdr-logo">
     <div class="hdr-icon">🏨</div>
-    <div><div class="hdr-title">VIPAT Hotel</div><div class="hdr-sub">ระบบจัดการ v4</div></div>
+    <div><div class="hdr-title">VIPAT Hotel</div><div class="hdr-sub">ระบบจัดการ v4.1</div></div>
   </div>
   <div class="hdr-status"><div class="pulse"></div>พร้อมใช้งาน</div>
 </header>
@@ -264,7 +271,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <section id="dashboard" class="sec active">
     <div class="ptitle">📊 แดชบอร์ด</div>
     <div class="card">
-      <div class="ctitle">🏠 ห้องพัก (51 ห้อง)</div>
+      <div class="ctitle">⚡ คำสั่งซื้อด่วน</div>
+      <div class="qbar">
+        <button class="qb" onclick="goSec('checkin'); setTimeout(loadCIRooms,100)">
+          <span class="qbi">📝</span><span>เช็คอิน</span>
+        </button>
+        <button class="qb" onclick="goSec('rooms')">
+          <span class="qbi">🏠</span><span>ห้องพัก</span>
+        </button>
+        <button class="qb" onclick="goSec('accounting'); setTimeout(() => loadAcc(),100)">
+          <span class="qbi">💰</span><span>บัญชี</span>
+        </button>
+        <button class="qb" onclick="goSec('checkin'); setTimeout(() => {document.getElementById('ocr-input').click()},100)">
+          <span class="qbi">📷</span><span>สแกนบัตร</span>
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ctitle">🏠 ห้องพัก</div>
       <div class="sg">
         <div class="sb"><div class="sn" id="dash-total">-</div><div class="sl">ทั้งหมด</div></div>
         <div class="sb g"><div class="sn" id="dash-avail">-</div><div class="sl">ว่าง</div></div>
@@ -427,7 +451,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="ab r"><div class="abl">รายจ่าย</div><div class="aba" id="acc-out">฿0</div></div>
       <div class="ab b"><div class="abl">คงเหลือ</div><div class="aba" id="acc-bal">฿0</div></div>
     </div>
-    <div class="obar"><span class="olbl">💰 ยอดยกมา</span><span class="oamt" id="acc-open">฿4,037</span></div>
+    <div class="obar"><span class="olbl">💰 ยอดยกมา</span><span class="oamt" id="acc-open">-</span></div>
     <div class="card">
       <div class="sechdr"><div class="ctitle" style="margin:0">รายการ</div><button onclick="addTx()" class="lbtn">+ เพิ่ม</button></div>
       <div id="tx-list"><div class="empty">ไม่มีรายการ</div></div>
@@ -457,6 +481,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="exp-btn" onclick="expData('transactions')">📊 บัญชี</div>
         <div class="exp-btn" onclick="expData('customers')">👥 ลูกค้า</div>
         <div class="exp-btn" onclick="expData('bookings')">📋 จอง</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="settings" class="sec">
+    <div class="ptitle">⚙️ ตั้งค่า</div>
+    <div class="card">
+      <div class="ctitle">💰 การเงิน</div>
+      <div class="field"><label>ยอดยกมา</label><input type="number" id="set-open" class="inp" placeholder="0"></div>
+      <div class="field"><label>มัดจำเริ่มต้น</label><input type="number" id="set-dep" class="inp" placeholder="200"></div>
+      <div class="field"><label>อัตราค่าไฟ/หน่วย</label><input type="number" id="set-elec" class="inp" placeholder="8"></div>
+      <div class="field"><label>อัตราค่าน้ำ/หน่วย</label><input type="number" id="set-water" class="inp" placeholder="25"></div>
+      <button onclick="saveSettings()" class="btn bp">บันทึก</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">🧹 จำนวนห้อง (51 ห้อง)</div>
+      <div class="inrow" style="margin-bottom:10px">
+        <div class="field" style="margin-bottom:0"><label>ตึก A</label><input type="number" id="set-count-a" class="inp" value="11"></div>
+        <div class="field" style="margin-bottom:0"><label>ตึก B</label><input type="number" id="set-count-b" class="inp" value="11"></div>
+      </div>
+      <div class="field"><label>ตึก N</label><input type="number" id="set-count-n" class="inp" value="7"></div>
+      <button onclick="regenRooms()" class="btn bs bsm">สร้างห้องใหม่ (ลบข้อมูลเดิม)</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">🗑️ ล้างข้อมูล</div>
+      <button onclick="clearAllData()" class="btn bd bsm">⚠️ ล้างข้อมูลทั้งหมด</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">ℹ️ ข้อมูล App</div>
+      <div style="font-size:13px;color:var(--muted)">
+        <div>VIPAT Hotel Manager v4.1</div>
+        <div style="margin-top:4px">Built with Capacitor + localStorage</div>
       </div>
     </div>
   </section>
@@ -510,6 +567,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="nb" data-s="import" onclick="goSec('import')">
     <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Import
   </button>
+  <button class="nb" data-s="settings" onclick="goSec('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>ตั้งค่า
+  </button>
 </nav>
 
 <!-- ROOM DETAIL SHEET -->
@@ -526,5 +586,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script src="js/db.js"></script>
 <script src="js/app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    appInit();
+  });
+</script>
 </body>
 </html>
