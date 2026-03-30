@@ -580,3 +580,4 @@ async function appInit() {
   document.getElementById('accounting-date').value = today;
   await loadDashboard();
 }
+// v3 update Mon Mar 30 09:30:27 +07 2026
