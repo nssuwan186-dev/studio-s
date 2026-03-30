@@ -11,26 +11,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      - name: Copy web assets
-        run: mkdir -p android/app/src/main/assets/public && cp -r www/* android/app/src/main/assets/public/
+      - name: Create assets directory
+        run: mkdir -p android/app/src/main/assets/public
 
-      - name: Build APK
-        working-directory: ./android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+      - name: Copy web files
+        run: cp -r www/* android/app/src/main/assets/public/
+
+      - name: Build
+        working-directory: android
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
