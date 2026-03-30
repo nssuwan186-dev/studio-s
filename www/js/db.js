@@ -1,50 +1,41 @@
 /**
- * Resort Management System - SQLite Version
- * ระบบจัดการรีสอร์ท - ฐานข้อมูล SQLite จริง
+ * Resort Management System - SQLite v3
+ * เพิ่ม: รูปภาพใบเสร็จ + Import CSV
  */
 
 let sqlitePlugin = null;
 let dbConnection = null;
 let isNative = false;
 
-// ตรวจสอบว่ารันบน Capacitor (APK) หรือ Browser
 async function initDatabase() {
   try {
     if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-      // === โหมด APK: ใช้ SQLite จริง ===
       isNative = true;
       const { CapacitorSQLite, SQLiteConnection } = window.CapacitorSQLite;
       sqlitePlugin = new SQLiteConnection(CapacitorSQLite);
-
       const ret = await sqlitePlugin.checkConnectionsConsistency();
       const isConn = (await sqlitePlugin.isConnection('resort_db', false)).result;
-
       if (ret.result && isConn) {
         dbConnection = await sqlitePlugin.retrieveConnection('resort_db', false);
       } else {
-        dbConnection = await sqlitePlugin.createConnection(
-          'resort_db', false, 'no-encryption', 1, false
-        );
+        dbConnection = await sqlitePlugin.createConnection('resort_db', false, 'no-encryption', 1, false);
       }
-
       await dbConnection.open();
       await createTables();
       await seedDefaultData();
-      console.log('✅ SQLite เปิดใช้งานแล้ว (Native)');
+      console.log('SQLite Native OK');
     } else {
-      // === โหมด Browser: ใช้ localStorage เป็น fallback ===
       isNative = false;
       await seedDefaultDataLocal();
-      console.log('✅ localStorage mode (Browser preview)');
+      console.log('localStorage fallback OK');
     }
   } catch (err) {
-    console.error('Database init error:', err);
+    console.error('DB init error:', err);
     isNative = false;
     await seedDefaultDataLocal();
   }
 }
 
-// สร้างตาราง SQL
 async function createTables() {
   const sql = `
     CREATE TABLE IF NOT EXISTS rooms (
@@ -56,18 +47,19 @@ async function createTables() {
       price_per_night INTEGER DEFAULT 400,
       status TEXT DEFAULT 'available'
     );
-
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
       phone TEXT,
       address TEXT,
+      id_card TEXT,
+      email TEXT,
+      notes TEXT,
       total_stays INTEGER DEFAULT 0,
       total_spent INTEGER DEFAULT 0,
       last_stay_date TEXT
     );
-
     CREATE TABLE IF NOT EXISTS bookings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       booking_id TEXT NOT NULL UNIQUE,
@@ -90,7 +82,6 @@ async function createTables() {
       notes TEXT,
       created_at TEXT
     );
-
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
@@ -100,24 +91,28 @@ async function createTables() {
       receipt INTEGER DEFAULT 0,
       payment INTEGER DEFAULT 0,
       deposit_cash INTEGER DEFAULT 0,
-      notes TEXT
+      notes TEXT,
+      receipt_image TEXT DEFAULT ''
     );
-
+    CREATE TABLE IF NOT EXISTS receipt_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id INTEGER,
+      booking_id TEXT DEFAULT '',
+      image_data TEXT NOT NULL,
+      image_name TEXT DEFAULT 'receipt.jpg',
+      created_at TEXT
+    );
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT
     );
   `;
-
   await dbConnection.execute(sql);
 }
 
-// ข้อมูลเริ่มต้น
 async function seedDefaultData() {
-  // ตรวจสอบว่ามีข้อมูลห้องแล้วหรือยัง
   const result = await dbConnection.query('SELECT COUNT(*) as cnt FROM rooms');
   if (result.values[0].cnt > 0) return;
-
   const rooms = [
     ['A101','A',1,'Standard',400],['A102','A',1,'Standard',400],
     ['A103','A',1,'Standard Twin',500],['A104','A',1,'Standard',400],
@@ -133,113 +128,81 @@ async function seedDefaultData() {
     ['N3','N',1,'Standard',500],['N4','N',1,'Standard Twin',600],
     ['N5','N',1,'Standard',500],
   ];
-
   for (const r of rooms) {
     await dbConnection.run(
-      `INSERT OR IGNORE INTO rooms (room_number,building,floor,room_type,price_per_night,status) VALUES (?,?,?,?,?,'available')`,
-      r
+      `INSERT OR IGNORE INTO rooms (room_number,building,floor,room_type,price_per_night,status) VALUES (?,?,?,?,?,'available')`, r
     );
   }
-
-  const customers = [
-    ['CM00001','สมชาย ใจดี','081-234-5678','กรุงเทพฯ',5,8000],
-    ['CM00002','สมหญิง รักเรียน','082-345-6789','เชียงใหม่',3,4500],
-    ['CM00003','John Smith','089-999-8888','Bangkok',2,3000],
-    ['CM00004','วิชัย เก่งกาจ','083-456-7890','ภูเก็ต',10,15000],
-    ['CM00005','มานี มีนา','084-567-8901','ชลบุรี',1,1200],
-  ];
-
-  for (const c of customers) {
-    await dbConnection.run(
-      `INSERT OR IGNORE INTO customers (customer_id,name,phone,address,total_stays,total_spent) VALUES (?,?,?,?,?,?)`,
-      c
-    );
-  }
-
-  // Settings
-  const defaults = [
-    ['openingBalance','4037'],
-    ['depositAmount','200'],
-    ['electricRate','8'],
-    ['waterRate','25'],
-  ];
+  const defaults = [['openingBalance','4037'],['depositAmount','200'],['electricRate','8'],['waterRate','25']];
   for (const s of defaults) {
     await dbConnection.run(`INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)`, s);
   }
 }
 
-// ============================================================
-// DATABASE API - ใช้ SQLite (Native) หรือ localStorage (Browser)
-// ============================================================
-
 const db = {
-  // ROOMS
   rooms: {
     getAll: async () => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM rooms ORDER BY building, room_number');
-        return r.values || [];
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM rooms ORDER BY building, room_number')).values || [];
       return JSON.parse(localStorage.getItem('resort_rooms') || '[]');
     },
     getById: async (id) => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM rooms WHERE id=?', [id]);
-        return r.values?.[0] || null;
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM rooms WHERE id=?', [id])).values?.[0] || null;
       return JSON.parse(localStorage.getItem('resort_rooms') || '[]').find(r => r.id === id);
     },
     getByStatus: async (status) => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM rooms WHERE status=? ORDER BY building, room_number', [status]);
-        return r.values || [];
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM rooms WHERE status=? ORDER BY building, room_number', [status])).values || [];
       return JSON.parse(localStorage.getItem('resort_rooms') || '[]').filter(r => r.status === status);
-    },
-    getByBuilding: async (building) => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM rooms WHERE building=? ORDER BY room_number', [building]);
-        return r.values || [];
-      }
-      return JSON.parse(localStorage.getItem('resort_rooms') || '[]').filter(r => r.building === building);
     },
     update: async (id, updates) => {
       if (isNative) {
         const sets = Object.keys(updates).map(k => `${k}=?`).join(',');
         await dbConnection.run(`UPDATE rooms SET ${sets} WHERE id=?`, [...Object.values(updates), id]);
-        return true;
+      } else {
+        const rooms = JSON.parse(localStorage.getItem('resort_rooms') || '[]');
+        const idx = rooms.findIndex(r => r.id === id);
+        if (idx !== -1) { rooms[idx] = {...rooms[idx], ...updates}; localStorage.setItem('resort_rooms', JSON.stringify(rooms)); }
       }
-      const rooms = JSON.parse(localStorage.getItem('resort_rooms') || '[]');
-      const idx = rooms.findIndex(r => r.id === id);
-      if (idx !== -1) { rooms[idx] = {...rooms[idx], ...updates}; localStorage.setItem('resort_rooms', JSON.stringify(rooms)); }
-      return true;
+    },
+    importBatch: async (rows) => {
+      let success = 0, skip = 0;
+      for (const r of rows) {
+        if (!r.room_number || !r.building) { skip++; continue; }
+        try {
+          if (isNative) {
+            await dbConnection.run(
+              `INSERT OR IGNORE INTO rooms (room_number,building,floor,room_type,price_per_night,status) VALUES (?,?,?,?,?,?)`,
+              [r.room_number, r.building, parseInt(r.floor)||1, r.room_type||'Standard', parseInt(r.price_per_night)||400, r.status||'available']
+            );
+          } else {
+            const existing = JSON.parse(localStorage.getItem('resort_rooms') || '[]');
+            if (!existing.find(e => e.room_number === r.room_number)) {
+              existing.push({id: Date.now()+success, room_number:r.room_number, building:r.building, floor:parseInt(r.floor)||1, room_type:r.room_type||'Standard', price_per_night:parseInt(r.price_per_night)||400, status:r.status||'available'});
+              localStorage.setItem('resort_rooms', JSON.stringify(existing));
+            }
+          }
+          success++;
+        } catch(e) { skip++; }
+      }
+      return { success, skip };
     }
   },
 
-  // CUSTOMERS
   customers: {
     getAll: async () => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM customers ORDER BY name');
-        return r.values || [];
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM customers ORDER BY name')).values || [];
       return JSON.parse(localStorage.getItem('resort_customers') || '[]');
     },
     getById: async (custId) => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM customers WHERE customer_id=?', [custId]);
-        return r.values?.[0] || null;
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM customers WHERE customer_id=?', [custId])).values?.[0] || null;
       return JSON.parse(localStorage.getItem('resort_customers') || '[]').find(c => c.customer_id === custId);
     },
     search: async (query) => {
       if (isNative) {
         const q = `%${query}%`;
-        const r = await dbConnection.query(
-          'SELECT * FROM customers WHERE name LIKE ? OR customer_id LIKE ? OR phone LIKE ? ORDER BY name',
-          [q, q, q]
-        );
-        return r.values || [];
+        return (await dbConnection.query(
+          'SELECT * FROM customers WHERE name LIKE ? OR customer_id LIKE ? OR phone LIKE ? OR id_card LIKE ? ORDER BY name',
+          [q, q, q, q]
+        )).values || [];
       }
       const q = query.toLowerCase();
       return JSON.parse(localStorage.getItem('resort_customers') || '[]').filter(c =>
@@ -249,14 +212,36 @@ const db = {
     add: async (customer) => {
       if (isNative) {
         await dbConnection.run(
-          `INSERT INTO customers (customer_id,name,phone,address,total_stays,total_spent) VALUES (?,?,?,?,?,?)`,
-          [customer.customer_id, customer.name, customer.phone||'', customer.address||'', 0, 0]
+          `INSERT OR IGNORE INTO customers (customer_id,name,phone,address,id_card,email,notes,total_stays,total_spent) VALUES (?,?,?,?,?,?,?,?,?)`,
+          [customer.customer_id, customer.name, customer.phone||'', customer.address||'', customer.id_card||'', customer.email||'', customer.notes||'', 0, 0]
         );
       } else {
         const customers = JSON.parse(localStorage.getItem('resort_customers') || '[]');
         customers.push(customer);
         localStorage.setItem('resort_customers', JSON.stringify(customers));
       }
+    },
+    importBatch: async (rows) => {
+      let success = 0, skip = 0, errors = [];
+      for (const c of rows) {
+        if (!c.name) { skip++; continue; }
+        try {
+          if (isNative) {
+            await dbConnection.run(
+              `INSERT OR IGNORE INTO customers (customer_id,name,phone,address,id_card,email,notes,total_stays,total_spent) VALUES (?,?,?,?,?,?,?,?,?)`,
+              [c.customer_id, c.name, c.phone||'', c.address||'', c.id_card||'', c.email||'', c.notes||'', parseInt(c.total_stays)||0, parseInt(c.total_spent)||0]
+            );
+          } else {
+            const existing = JSON.parse(localStorage.getItem('resort_customers') || '[]');
+            if (!existing.find(e => e.customer_id === c.customer_id)) {
+              existing.push({...c, total_stays: parseInt(c.total_stays)||0, total_spent: parseInt(c.total_spent)||0});
+              localStorage.setItem('resort_customers', JSON.stringify(existing));
+            }
+          }
+          success++;
+        } catch(e) { errors.push(c.name); }
+      }
+      return { success, skip, errors };
     },
     updateStats: async (custId, stayInc, spentInc, date) => {
       if (isNative) {
@@ -275,66 +260,36 @@ const db = {
       if (isNative) {
         const r = await dbConnection.query('SELECT customer_id FROM customers ORDER BY customer_id DESC LIMIT 1');
         const last = r.values?.[0]?.customer_id || 'CM00000';
-        const num = parseInt(last.replace('CM','')) + 1;
-        return `CM${num.toString().padStart(5,'0')}`;
+        return `CM${(parseInt(last.replace('CM',''))+1).toString().padStart(5,'0')}`;
       }
       const customers = JSON.parse(localStorage.getItem('resort_customers') || '[]');
-      const max = customers.reduce((m,c) => Math.max(m, parseInt(c.customer_id.replace('CM',''))), 0);
+      const max = customers.reduce((m,c) => Math.max(m, parseInt(c.customer_id?.replace('CM','')||0)), 0);
       return `CM${(max+1).toString().padStart(5,'0')}`;
     }
   },
 
-  // BOOKINGS
   bookings: {
     getAll: async () => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM bookings ORDER BY created_at DESC');
-        return r.values || [];
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM bookings ORDER BY created_at DESC')).values || [];
       return JSON.parse(localStorage.getItem('resort_bookings') || '[]');
     },
     getActive: async () => {
-      if (isNative) {
-        const r = await dbConnection.query(`SELECT * FROM bookings WHERE status='checked_in'`);
-        return r.values || [];
-      }
-      return JSON.parse(localStorage.getItem('resort_bookings') || '[]').filter(b => b.status === 'checked_in');
+      if (isNative) return (await dbConnection.query(`SELECT * FROM bookings WHERE status='checked_in'`)).values || [];
+      return JSON.parse(localStorage.getItem('resort_bookings') || '[]').filter(b => b.status==='checked_in');
     },
     getByDate: async (date) => {
-      if (isNative) {
-        const r = await dbConnection.query(
-          `SELECT * FROM bookings WHERE check_in_date=? OR check_out_date=?`, [date, date]
-        );
-        return r.values || [];
-      }
-      return JSON.parse(localStorage.getItem('resort_bookings') || '[]').filter(b =>
-        b.check_in_date === date || b.check_out_date === date
-      );
+      if (isNative) return (await dbConnection.query(`SELECT * FROM bookings WHERE check_in_date=? OR check_out_date=?`, [date, date])).values || [];
+      return JSON.parse(localStorage.getItem('resort_bookings') || '[]').filter(b => b.check_in_date===date || b.check_out_date===date);
     },
     getByDateRange: async (start, end) => {
-      if (isNative) {
-        const r = await dbConnection.query(
-          `SELECT * FROM bookings WHERE check_in_date >= ? AND check_in_date <= ?`, [start, end]
-        );
-        return r.values || [];
-      }
-      return JSON.parse(localStorage.getItem('resort_bookings') || '[]').filter(b =>
-        b.check_in_date >= start && b.check_in_date <= end
-      );
+      if (isNative) return (await dbConnection.query(`SELECT * FROM bookings WHERE check_in_date >= ? AND check_in_date <= ?`, [start, end])).values || [];
+      return JSON.parse(localStorage.getItem('resort_bookings') || '[]').filter(b => b.check_in_date>=start && b.check_in_date<=end);
     },
     add: async (booking) => {
       if (isNative) {
         await dbConnection.run(
-          `INSERT INTO bookings (booking_id,customer_id,room_id,check_in_date,check_out_date,nights,
-           room_rate,room_total,electric_fee,water_fee,discount,deposit,total_amount,amount_paid,
-           change_amount,payment_method,status,notes,created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [booking.booking_id, booking.customer_id, booking.room_id,
-           booking.check_in_date, booking.check_out_date, booking.nights,
-           booking.room_rate, booking.room_total, booking.electric_fee,
-           booking.water_fee, booking.discount, booking.deposit,
-           booking.total_amount, booking.amount_paid, booking.change_amount,
-           booking.payment_method, booking.status, booking.notes||'', booking.created_at]
+          `INSERT INTO bookings (booking_id,customer_id,room_id,check_in_date,check_out_date,nights,room_rate,room_total,electric_fee,water_fee,discount,deposit,total_amount,amount_paid,change_amount,payment_method,status,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [booking.booking_id,booking.customer_id,booking.room_id,booking.check_in_date,booking.check_out_date,booking.nights,booking.room_rate,booking.room_total,booking.electric_fee,booking.water_fee,booking.discount,booking.deposit,booking.total_amount,booking.amount_paid,booking.change_amount,booking.payment_method,booking.status,booking.notes||'',booking.created_at]
         );
       } else {
         const bookings = JSON.parse(localStorage.getItem('resort_bookings') || '[]');
@@ -348,84 +303,152 @@ const db = {
         await dbConnection.run(`UPDATE bookings SET ${sets} WHERE booking_id=?`, [...Object.values(updates), bookingId]);
       } else {
         const bookings = JSON.parse(localStorage.getItem('resort_bookings') || '[]');
-        const idx = bookings.findIndex(b => b.booking_id === bookingId);
-        if (idx !== -1) { bookings[idx] = {...bookings[idx], ...updates}; localStorage.setItem('resort_bookings', JSON.stringify(bookings)); }
+        const idx = bookings.findIndex(b => b.booking_id===bookingId);
+        if (idx !== -1) { bookings[idx]={...bookings[idx],...updates}; localStorage.setItem('resort_bookings', JSON.stringify(bookings)); }
       }
     }
   },
 
-  // TRANSACTIONS
   transactions: {
     getAll: async () => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM transactions ORDER BY date DESC, id DESC');
-        return r.values || [];
-      }
+      if (isNative) return (await dbConnection.query('SELECT * FROM transactions ORDER BY date DESC, id DESC')).values || [];
       return JSON.parse(localStorage.getItem('resort_transactions') || '[]');
     },
     getByDate: async (date) => {
-      if (isNative) {
-        const r = await dbConnection.query('SELECT * FROM transactions WHERE date=? ORDER BY id ASC', [date]);
-        return r.values || [];
-      }
-      return JSON.parse(localStorage.getItem('resort_transactions') || '[]').filter(t => t.date === date);
+      if (isNative) return (await dbConnection.query('SELECT * FROM transactions WHERE date=? ORDER BY id ASC', [date])).values || [];
+      return JSON.parse(localStorage.getItem('resort_transactions') || '[]').filter(t => t.date===date);
     },
     getByDateRange: async (start, end) => {
-      if (isNative) {
-        const r = await dbConnection.query(
-          'SELECT * FROM transactions WHERE date >= ? AND date <= ? ORDER BY date, id', [start, end]
-        );
-        return r.values || [];
-      }
-      return JSON.parse(localStorage.getItem('resort_transactions') || '[]').filter(t =>
-        t.date >= start && t.date <= end
-      );
+      if (isNative) return (await dbConnection.query('SELECT * FROM transactions WHERE date >= ? AND date <= ? ORDER BY date, id', [start, end])).values || [];
+      return JSON.parse(localStorage.getItem('resort_transactions') || '[]').filter(t => t.date>=start && t.date<=end);
     },
     add: async (tx) => {
       if (isNative) {
-        await dbConnection.run(
-          `INSERT INTO transactions (date,item_name,category,room_number,receipt,payment,deposit_cash,notes)
-           VALUES (?,?,?,?,?,?,?,?)`,
-          [tx.date, tx.item_name, tx.category||'income', tx.room_number||'',
-           tx.receipt||0, tx.payment||0, tx.deposit_cash||0, tx.notes||'']
+        const result = await dbConnection.run(
+          `INSERT INTO transactions (date,item_name,category,room_number,receipt,payment,deposit_cash,notes,receipt_image) VALUES (?,?,?,?,?,?,?,?,?)`,
+          [tx.date,tx.item_name,tx.category||'income',tx.room_number||'',tx.receipt||0,tx.payment||0,tx.deposit_cash||0,tx.notes||'',tx.receipt_image||'']
         );
+        return result.changes?.lastId;
       } else {
         const txs = JSON.parse(localStorage.getItem('resort_transactions') || '[]');
-        txs.push(tx);
+        const id = Date.now();
+        txs.push({...tx, id});
         localStorage.setItem('resort_transactions', JSON.stringify(txs));
+        return id;
+      }
+    },
+    updateImage: async (txId, imageData) => {
+      if (isNative) await dbConnection.run(`UPDATE transactions SET receipt_image=? WHERE id=?`, [imageData, txId]);
+      else {
+        const txs = JSON.parse(localStorage.getItem('resort_transactions') || '[]');
+        const t = txs.find(t => t.id===txId);
+        if (t) { t.receipt_image = imageData; localStorage.setItem('resort_transactions', JSON.stringify(txs)); }
       }
     }
   },
 
-  // SETTINGS
+  images: {
+    save: async (txId, bookingId, imageData, imageName) => {
+      if (isNative) {
+        await dbConnection.run(
+          `INSERT INTO receipt_images (transaction_id,booking_id,image_data,image_name,created_at) VALUES (?,?,?,?,?)`,
+          [txId||null, bookingId||'', imageData, imageName||'receipt.jpg', new Date().toISOString()]
+        );
+      } else {
+        const imgs = JSON.parse(localStorage.getItem('resort_images') || '[]');
+        imgs.push({id:Date.now(), transaction_id:txId, booking_id:bookingId, image_data:imageData, image_name:imageName||'receipt.jpg', created_at:new Date().toISOString()});
+        localStorage.setItem('resort_images', JSON.stringify(imgs));
+      }
+    },
+    getByTransaction: async (txId) => {
+      if (isNative) return (await dbConnection.query('SELECT * FROM receipt_images WHERE transaction_id=?', [txId])).values || [];
+      return JSON.parse(localStorage.getItem('resort_images') || '[]').filter(i => i.transaction_id===txId);
+    },
+    delete: async (id) => {
+      if (isNative) await dbConnection.run('DELETE FROM receipt_images WHERE id=?', [id]);
+      else {
+        const imgs = JSON.parse(localStorage.getItem('resort_images') || '[]').filter(i => i.id!==id);
+        localStorage.setItem('resort_images', JSON.stringify(imgs));
+      }
+    }
+  },
+
   settings: {
     get: async () => {
       if (isNative) {
         const r = await dbConnection.query('SELECT key, value FROM settings');
         const s = {};
-        (r.values || []).forEach(row => { s[row.key] = isNaN(row.value) ? row.value : Number(row.value); });
+        (r.values||[]).forEach(row => { s[row.key] = isNaN(row.value) ? row.value : Number(row.value); });
         return s;
       }
-      const s = JSON.parse(localStorage.getItem('resort_settings') || 'null');
-      return s || { openingBalance: 4037, depositAmount: 200, electricRate: 8, waterRate: 25 };
+      return JSON.parse(localStorage.getItem('resort_settings') || 'null') || {openingBalance:4037,depositAmount:200,electricRate:8,waterRate:25};
     },
     update: async (updates) => {
       if (isNative) {
-        for (const [k, v] of Object.entries(updates)) {
-          await dbConnection.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [k, String(v)]);
-        }
+        for (const [k,v] of Object.entries(updates)) await dbConnection.run(`INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)`, [k, String(v)]);
       } else {
         const s = JSON.parse(localStorage.getItem('resort_settings') || '{}');
-        localStorage.setItem('resort_settings', JSON.stringify({...s, ...updates}));
+        localStorage.setItem('resort_settings', JSON.stringify({...s,...updates}));
       }
     }
   }
 };
 
-// Fallback seed data for localStorage mode
+// CSV Import Utilities
+const CSVImport = {
+  parse: (csvText) => {
+    const lines = csvText.trim().split('\n');
+    if (lines.length < 2) return { headers: [], rows: [] };
+    const raw = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+    const headers = raw.map(h => {
+      const map = {
+        'รหัสลูกค้า':'customer_id','รหัส':'customer_id',
+        'ชื่อ':'name','ชื่อลูกค้า':'name',
+        'เบอร์โทร':'phone','เบอร์':'phone','โทร':'phone',
+        'ที่อยู่':'address',
+        'เลขบัตร':'id_card','บัตรประชาชน':'id_card',
+        'อีเมล':'email','email':'email',
+        'หมายเหตุ':'notes',
+        'จำนวนครั้ง':'total_stays',
+        'ยอดรวม':'total_spent',
+        'ห้อง':'room_number','หมายเลขห้อง':'room_number',
+        'ตึก':'building','อาคาร':'building',
+        'ชั้น':'floor',
+        'ประเภท':'room_type','ประเภทห้อง':'room_type',
+        'ราคา':'price_per_night','ราคา/คืน':'price_per_night',
+        'สถานะ':'status',
+      };
+      return map[h] || h.toLowerCase();
+    });
+    const rows = lines.slice(1).filter(l => l.trim()).map(line => {
+      const vals = line.split(',').map(v => v.trim().replace(/"/g,''));
+      const obj = {};
+      headers.forEach((h,i) => { if (vals[i] !== undefined) obj[h] = vals[i]; });
+      return obj;
+    });
+    return { headers, rows };
+  },
+
+  detectType: (headers) => {
+    const h = headers.join(' ');
+    if (h.includes('customer_id') || h.includes('name')) return 'customers';
+    if (h.includes('room_number') || h.includes('building')) return 'rooms';
+    return 'unknown';
+  },
+
+  autoGenerateIds: async (rows) => {
+    const existing = await db.customers.getAll();
+    let maxNum = existing.reduce((m,c) => Math.max(m, parseInt(c.customer_id?.replace('CM','')||0)), 0);
+    return rows.map(r => {
+      if (!r.customer_id) { maxNum++; r.customer_id = `CM${maxNum.toString().padStart(5,'0')}`; }
+      return r;
+    });
+  }
+};
+
 async function seedDefaultDataLocal() {
   if (!localStorage.getItem('resort_rooms')) {
-    const rooms = [
+    localStorage.setItem('resort_rooms', JSON.stringify([
       {id:1,room_number:'A101',building:'A',floor:1,room_type:'Standard',price_per_night:400,status:'available'},
       {id:2,room_number:'A102',building:'A',floor:1,room_type:'Standard',price_per_night:400,status:'available'},
       {id:3,room_number:'A103',building:'A',floor:1,room_type:'Standard Twin',price_per_night:500,status:'available'},
@@ -451,29 +474,16 @@ async function seedDefaultDataLocal() {
       {id:23,room_number:'N3',building:'N',floor:1,room_type:'Standard',price_per_night:500,status:'available'},
       {id:24,room_number:'N4',building:'N',floor:1,room_type:'Standard Twin',price_per_night:600,status:'available'},
       {id:25,room_number:'N5',building:'N',floor:1,room_type:'Standard',price_per_night:500,status:'available'},
-    ];
-    localStorage.setItem('resort_rooms', JSON.stringify(rooms));
-  }
-  if (!localStorage.getItem('resort_customers')) {
-    localStorage.setItem('resort_customers', JSON.stringify([
-      {customer_id:'CM00001',name:'สมชาย ใจดี',phone:'081-234-5678',address:'กรุงเทพฯ',total_stays:5,total_spent:8000},
-      {customer_id:'CM00002',name:'สมหญิง รักเรียน',phone:'082-345-6789',address:'เชียงใหม่',total_stays:3,total_spent:4500},
-      {customer_id:'CM00003',name:'John Smith',phone:'089-999-8888',address:'Bangkok',total_stays:2,total_spent:3000},
     ]));
   }
+  if (!localStorage.getItem('resort_customers')) localStorage.setItem('resort_customers', JSON.stringify([]));
   if (!localStorage.getItem('resort_bookings')) localStorage.setItem('resort_bookings', JSON.stringify([]));
   if (!localStorage.getItem('resort_transactions')) localStorage.setItem('resort_transactions', JSON.stringify([]));
-  if (!localStorage.getItem('resort_settings')) {
-    localStorage.setItem('resort_settings', JSON.stringify({openingBalance:4037,depositAmount:200,electricRate:8,waterRate:25}));
-  }
+  if (!localStorage.getItem('resort_settings')) localStorage.setItem('resort_settings', JSON.stringify({openingBalance:4037,depositAmount:200,electricRate:8,waterRate:25}));
 }
 
-// Calculator utilities
 const Calculator = {
-  calculateNights: (checkIn, checkOut) => {
-    const nights = moment(checkOut).diff(moment(checkIn), 'days');
-    return nights > 0 ? nights : 1;
-  },
+  calculateNights: (ci, co) => { const n = moment(co).diff(moment(ci), 'days'); return n > 0 ? n : 1; },
   calculateTotal: (roomRate, nights, electric, water, deposit, discount) => {
     const roomTotal = roomRate * nights;
     const subtotal = roomTotal + electric + water;
@@ -481,13 +491,9 @@ const Calculator = {
     const grandTotal = afterDiscount + deposit;
     return { roomTotal, electric, water, subtotal, discount, afterDiscount, deposit, grandTotal };
   },
-  generateBookingId: () => {
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3,'0');
-    return `BK${moment().format('YYMMDD')}${random}`;
-  }
+  generateBookingId: () => `BK${moment().format('YYMMDD')}${Math.floor(Math.random()*1000).toString().padStart(3,'0')}`
 };
 
-// Init on load
 document.addEventListener('DOMContentLoaded', async () => {
   await initDatabase();
   await appInit();
