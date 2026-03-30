@@ -15,6 +15,8 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends Activity {
     private WebView webView;
@@ -92,29 +94,85 @@ public class MainActivity extends Activity {
         private Context ctx;
         DownloadInterface(Context c) { ctx = c; }
         
+        private File getDownloadFolder() {
+            File vipatFolder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "VIPAT Data");
+            if (!vipatFolder.exists()) {
+                vipatFolder.mkdirs();
+            }
+            return vipatFolder;
+        }
+        
         @JavascriptInterface
         public void downloadFile(String data, String filename, String mimeType) {
             try {
-                File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                if (!downloadsDir.exists()) {
-                    downloadsDir.mkdirs();
-                }
-                
-                File file = new File(downloadsDir, filename);
+                File vipatFolder = getDownloadFolder();
+                File file = new File(vipatFolder, filename);
                 FileOutputStream fos = new FileOutputStream(file);
                 fos.write(data.getBytes("UTF-8"));
                 fos.close();
                 
-                Toast.makeText(ctx, "ดาวน์โหลดไฟล์สำเร็จ: " + filename, Toast.LENGTH_LONG).show();
+                Toast.makeText(ctx, "บันทึกไฟล์สำเร็จ: " + filename, Toast.LENGTH_LONG).show();
                 
                 Intent i = new Intent(Intent.ACTION_VIEW);
                 i.setDataAndType(Uri.fromFile(file), mimeType);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 ctx.startActivity(i);
             } catch (Exception e) {
-                Toast.makeText(ctx, "ดาวน์โหลดล้มเหลว: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                Toast.makeText(ctx, "บันทึกล้มเหลว: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 e.printStackTrace();
             }
+        }
+        
+        @JavascriptInterface
+        public void downloadPDF(String htmlContent, String filename) {
+            try {
+                File vipatFolder = getDownloadFolder();
+                String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String pdfFilename = filename.replace(".html", "") + "_" + timestamp + ".html";
+                File file = new File(vipatFolder, pdfFilename);
+                FileOutputStream fos = new FileOutputStream(file);
+                fos.write(htmlContent.getBytes("UTF-8"));
+                fos.close();
+                
+                Toast.makeText(ctx, "บันทึกรายงานสำเร็จ: " + pdfFilename, Toast.LENGTH_LONG).show();
+                
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setDataAndType(Uri.fromFile(file), "text/html");
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+            } catch (Exception e) {
+                Toast.makeText(ctx, "บันทึกล้มเหลว: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                e.printStackTrace();
+            }
+        }
+        
+        @JavascriptInterface
+        public void saveImage(String base64Data, String filename) {
+            try {
+                File vipatFolder = getDownloadFolder();
+                
+                String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String imgFilename = filename + "_" + timestamp + ".jpg";
+                File file = new File(vipatFolder, imgFilename);
+                
+                String base64Image = base64Data.replaceFirst("^data:image/[^;]+;base64,", "");
+                byte[] imageBytes = android.util.Base64.decode(base64Image, android.util.Base64.DEFAULT);
+                
+                FileOutputStream fos = new FileOutputStream(file);
+                fos.write(imageBytes);
+                fos.close();
+                
+                Toast.makeText(ctx, "บันทึกรูปภาพสำเร็จ: " + imgFilename, Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(ctx, "บันทึกรูปล้มเหลว: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                e.printStackTrace();
+            }
+        }
+        
+        @JavascriptInterface
+        public String getDownloadPath() {
+            File vipatFolder = getDownloadFolder();
+            return vipatFolder.getAbsolutePath();
         }
     }
 }

@@ -147,6 +147,36 @@ async function handleOCR(input) {
   box.classList.add('scanning');
   status.style.display = 'block';
   status.className = 'ocr-status wait';
+  
+  const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  
+  if (isPDF) {
+    status.textContent = '⏳ กำลังอ่าน PDF...';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        status.textContent = `⏳ กำลังอ่านหน้า ${i}/${pdf.numPages}...`;
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n';
+      }
+      
+      status.textContent = '⏳ กำลังดึงข้อมูลจาก PDF...';
+      parseIDCard(fullText);
+      status.className = 'ocr-status ok';
+      status.innerHTML = `✅ อ่าน PDF สำเร็จ!<br><small>${pdf.numPages} หน้า</small><br><small>ตรวจสอบข้อมูลด้านล่าง</small>`;
+    } catch (err) {
+      status.className = 'ocr-status err';
+      status.innerHTML = `❌ อ่าน PDF ไม่สำเร็จ<br><small>${err.message}</small>`;
+    }
+    box.classList.remove('scanning');
+    return;
+  }
+  
   status.textContent = '⏳ กำลังสแกนบัตร... รอสักครู่';
 
   const reader = new FileReader();
@@ -542,7 +572,7 @@ async function openRoomSheet(roomId) {
 async function viewBookingSlip(bookingId) {
   const slip = await db.bookings.getImage(bookingId);
   if (slip) {
-    viewImg(slip);
+    viewImg(slip, 'slip-booking-' + bookingId);
   } else {
     showToast('ไม่มีสลิป', 'err');
   }
@@ -814,22 +844,49 @@ function attachImg(txId) {
   inp.click();
 }
 
-function viewImg(txId) {
+function viewImg(imgSrc, filename = 'slip') {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick = (e) => { if (e.target === ov) document.body.removeChild(ov); };
+  
+  const bi = document.createElement('img');
+  bi.src = imgSrc;
+  bi.style.cssText = 'max-width:95vw;max-height:75vh;border-radius:12px;object-fit:contain;';
+  
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:12px;margin-top:16px;';
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕ ปิด';
+  closeBtn.style.cssText = 'background:white;color:#333;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;';
+  closeBtn.onclick = () => document.body.removeChild(ov);
+  
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '💾 บันทึกรูป';
+  saveBtn.style.cssText = 'background:#52B788;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;';
+  saveBtn.onclick = () => {
+    if (window.AndroidDownload) {
+      window.AndroidDownload.saveImage(imgSrc, filename);
+    } else {
+      const a = document.createElement('a');
+      a.href = imgSrc;
+      a.download = filename + '.jpg';
+      a.click();
+    }
+  };
+  
+  btnRow.appendChild(saveBtn);
+  btnRow.appendChild(closeBtn);
+  ov.appendChild(bi);
+  ov.appendChild(btnRow);
+  document.body.appendChild(ov);
+}
+
+function viewTxImg(txId) {
   const el = document.getElementById(`tx-${txId}`);
   const img = el?.querySelector('img');
   if (!img) return;
-  const ov = document.createElement('div');
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;';
-  ov.onclick = () => document.body.removeChild(ov);
-  const bi = document.createElement('img');
-  bi.src = img.src;
-  bi.style.cssText = 'max-width:95vw;max-height:88vh;border-radius:12px;';
-  const cb = document.createElement('button');
-  cb.textContent = '✕';
-  cb.style.cssText = 'position:absolute;top:16px;right:16px;background:white;border:none;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;';
-  cb.onclick = () => document.body.removeChild(ov);
-  ov.appendChild(bi); ov.appendChild(cb);
-  document.body.appendChild(ov);
+  viewImg(img.src, 'slip-tx-' + txId);
 }
 
 async function expAcc() {

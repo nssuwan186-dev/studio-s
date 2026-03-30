@@ -6,6 +6,9 @@
 <title>VIPAT Hotel Manager</title>
 <script src="js/moment.min.js"></script>
 <script src="js/moment-th.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <style>
 :root {
   --primary:#1B4332;--primary-light:#2D6A4F;--primary-ultra:#D8F3DC;
@@ -326,7 +329,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="ocr-box" id="ocr-box">
         <div style="font-size:28px;margin-bottom:6px;">🪪</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">ถ่ายรูปหรือเลือกรูปบัตรประชาชน<br>ระบบจะดึงข้อมูลอัตโนมัติ</div>
-        <input type="file" id="ocr-input" accept="image/*" capture="environment" style="display:none" onchange="handleOCR(this)">
+        <input type="file" id="ocr-input" accept="image/*,.pdf,application/pdf" capture="environment" style="display:none" onchange="handleOCR(this)">
         <button class="ocr-btn" onclick="document.getElementById('ocr-input').click()">📷 สแกนบัตร</button>
         <div id="ocr-status" class="ocr-status" style="display:none"></div>
       </div>
