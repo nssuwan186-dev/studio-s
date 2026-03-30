@@ -27,6 +27,154 @@ function goSec(id) {
   else if (id === 'settings') loadSettings();
 }
 
+function closeQuickPopup(e, id) {
+  if (!e || e.target.id === id) {
+    document.getElementById(id).classList.remove('show');
+  }
+}
+
+async function openQuickGuest() {
+  document.getElementById('qg-name').value = '';
+  document.getElementById('qg-phone').value = '';
+  document.getElementById('qg-idcard').value = '';
+  document.getElementById('qg-address').value = '';
+  document.getElementById('quick-guest-popup').classList.add('show');
+}
+
+async function saveQuickGuest() {
+  const name = document.getElementById('qg-name').value.trim();
+  if (!name) { showToast('กรุณากรอกชื่อ', 'err'); return; }
+  
+  const phone = document.getElementById('qg-phone').value.trim();
+  const id_card = document.getElementById('qg-idcard').value.trim();
+  const address = document.getElementById('qg-address').value.trim();
+  const customer_id = 'C' + Date.now();
+  
+  await db.customers.add({ customer_id, name, phone, id_card, address, total_stays: 0, total_spent: 0 });
+  showToast('✅ เพิ่มผู้เข้าพักสำเร็จ');
+  closeQuickPopup(null, 'quick-guest-popup');
+  loadDash();
+}
+
+async function openQuickIncome() {
+  const rooms = await db.rooms.getAll();
+  const occ = rooms.filter(r => r.status === 'occupied');
+  let html = '<option value="">-- เลือกห้อง (ถ้ามี) --</option>';
+  occ.forEach(r => { html += `<option value="${r.room_number}">${r.room_number}</option>`; });
+  document.getElementById('qi-room').innerHTML = html;
+  document.getElementById('qi-date').value = moment().format('YYYY-MM-DD');
+  document.getElementById('qi-item').value = '';
+  document.getElementById('qi-amount').value = '';
+  document.getElementById('qi-note').value = '';
+  document.getElementById('quick-income-popup').classList.add('show');
+}
+
+async function saveQuickIncome() {
+  const date = document.getElementById('qi-date').value;
+  const item_name = document.getElementById('qi-item').value.trim();
+  const receipt = parseInt(document.getElementById('qi-amount').value) || 0;
+  const room_number = document.getElementById('qi-room').value;
+  const note = document.getElementById('qi-note').value.trim();
+  
+  if (!item_name || receipt <= 0) { showToast('กรุณากรอกรายการและจำนวนเงิน', 'err'); return; }
+  
+  await db.transactions.add({ date, item_name, receipt, payment: 0, room_number, note, type: 'income' });
+  showToast('✅ เพิ่มรายรับสำเร็จ');
+  closeQuickPopup(null, 'quick-income-popup');
+  loadDash();
+}
+
+async function openQuickExpense() {
+  document.getElementById('qe-date').value = moment().format('YYYY-MM-DD');
+  document.getElementById('qe-item').value = '';
+  document.getElementById('qe-amount').value = '';
+  document.getElementById('qe-category').value = '';
+  document.getElementById('qe-note').value = '';
+  document.getElementById('quick-expense-popup').classList.add('show');
+}
+
+async function saveQuickExpense() {
+  const date = document.getElementById('qe-date').value;
+  const item_name = document.getElementById('qe-item').value.trim();
+  const payment = parseInt(document.getElementById('qe-amount').value) || 0;
+  const category = document.getElementById('qe-category').value;
+  const note = document.getElementById('qe-note').value.trim();
+  
+  if (!item_name || payment <= 0) { showToast('กรุณากรอกรายการและจำนวนเงิน', 'err'); return; }
+  
+  const fullNote = category ? `${category}${note ? ' - ' + note : ''}` : note;
+  await db.transactions.add({ date, item_name, payment, receipt: 0, room_number: '', note: fullNote, type: 'expense' });
+  showToast('✅ เพิ่มรายจ่ายสำเร็จ');
+  closeQuickPopup(null, 'quick-expense-popup');
+  loadDash();
+}
+
+async function openQuickCheckin() {
+  const rooms = await db.rooms.getAll();
+  const avail = rooms.filter(r => r.status === 'available');
+  let html = '<option value="">-- เลือกห้อง --</option>';
+  avail.forEach(r => { html += `<option value="${r.room_number}">${r.room_number} - ${r.room_type} (฿${r.price_per_night})</option>`; });
+  document.getElementById('qci-room').innerHTML = html;
+  document.getElementById('qci-date').value = moment().format('YYYY-MM-DD');
+  document.getElementById('qco-date').value = moment().add(1, 'day').format('YYYY-MM-DD');
+  document.getElementById('qci-name').value = '';
+  document.getElementById('qci-phone').value = '';
+  document.getElementById('qci-deposit').value = appSettings?.depositAmount || 200;
+  document.getElementById('quick-checkin-popup').classList.add('show');
+}
+
+function selQCI(el) {
+  document.querySelectorAll('#quick-checkin-popup .po').forEach(p => p.classList.remove('checked'));
+  el.classList.add('checked');
+}
+
+async function saveQuickCheckin() {
+  const room_number = document.getElementById('qci-room').value;
+  const check_in_date = document.getElementById('qci-date').value;
+  const check_out_date = document.getElementById('qco-date').value;
+  const name = document.getElementById('qci-name').value.trim();
+  const phone = document.getElementById('qci-phone').value.trim();
+  const deposit = parseInt(document.getElementById('qci-deposit').value) || 0;
+  const payMethod = document.querySelector('input[name="qci-pay"]:checked').value;
+  
+  if (!room_number || !check_in_date || !check_out_date) { showToast('กรุณากรอกข้อมูลให้ครบ', 'err'); return; }
+  
+  const room = await db.rooms.getByNumber(room_number);
+  if (!room) { showToast('ไม่พบห้อง', 'err'); return; }
+  
+  const nights = moment(check_out_date).diff(moment(check_in_date), 'days');
+  const total = room.price_per_night * nights;
+  
+  let customer_id = '';
+  if (name) {
+    customer_id = 'C' + Date.now();
+    await db.customers.add({ customer_id, name, phone, total_stays: 1, total_spent: total });
+  }
+  
+  const booking_id = 'B' + Date.now();
+  await db.bookings.add({
+    booking_id, customer_id, room_id: room.id,
+    check_in_date, check_out_date, total_amount: total,
+    deposit, status: 'checked_in'
+  });
+  
+  await db.rooms.update(room.id, { status: 'occupied' });
+  
+  if (deposit > 0) {
+    await db.transactions.add({
+      date: check_in_date,
+      item_name: `เงินมัดจำ ห้อง ${room_number}`,
+      receipt: deposit, payment: 0,
+      room_number, note: payMethod,
+      type: 'income'
+    });
+  }
+  
+  showToast(`✅ เช็คอินสำเร็จ ห้อง ${room_number}`);
+  closeQuickPopup(null, 'quick-checkin-popup');
+  loadDash();
+}
+
 // =============================================================
 // SETTINGS
 // =============================================================

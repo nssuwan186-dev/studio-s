@@ -276,16 +276,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="card">
       <div class="ctitle">⚡ คำสั่งซื้อด่วน</div>
       <div class="qbar">
-        <button class="qb" onclick="goSec('checkin'); setTimeout(loadCIRooms,100)">
+        <button class="qb" onclick="openQuickCheckin()">
           <span class="qbi">📝</span><span>เช็คอิน</span>
+        </button>
+        <button class="qb" onclick="openQuickGuest()">
+          <span class="qbi">👤</span><span>ผู้เข้าพัก</span>
+        </button>
+        <button class="qb" onclick="openQuickIncome()">
+          <span class="qbi">💵</span><span>รายรับ</span>
+        </button>
+        <button class="qb" onclick="openQuickExpense()">
+          <span class="qbi">💸</span><span>รายจ่าย</span>
         </button>
         <button class="qb" onclick="goSec('rooms')">
           <span class="qbi">🏠</span><span>ห้องพัก</span>
         </button>
-        <button class="qb" onclick="goSec('accounting'); setTimeout(() => loadAcc(),100)">
-          <span class="qbi">💰</span><span>บัญชี</span>
-        </button>
-        <button class="qb" onclick="goSec('checkin'); setTimeout(() => {document.getElementById('ocr-input').click()},100)">
+        <button class="qb" onclick="document.getElementById('ocr-input').click()">
           <span class="qbi">📷</span><span>สแกนบัตร</span>
         </button>
       </div>
@@ -574,6 +580,84 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>ตั้งค่า
   </button>
 </nav>
+
+<!-- QUICK ACTION POPUPS -->
+<div id="quick-guest-popup" class="overlay" onclick="closeQuickPopup(event, 'quick-guest-popup')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">👤 เพิ่มผู้เข้าพักใหม่<button class="sheet-close" onclick="closeQuickPopup(null, 'quick-guest-popup')">✕</button></div>
+    <div style="padding:10px 0">
+      <input type="text" id="qg-name" class="inp" placeholder="ชื่อ-นามสกุล *" style="margin-bottom:10px">
+      <input type="tel" id="qg-phone" class="inp" placeholder="เบอร์โทรศัพท์" style="margin-bottom:10px">
+      <input type="text" id="qg-idcard" class="inp" placeholder="เลขบัตรประชาชน" style="margin-bottom:10px">
+      <input type="text" id="qg-address" class="inp" placeholder="ที่อยู่" style="margin-bottom:10px">
+      <button onclick="saveQuickGuest()" class="btn bp" style="width:100%">✅ บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div id="quick-income-popup" class="overlay" onclick="closeQuickPopup(event, 'quick-income-popup')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">💵 เพิ่มรายรับ<button class="sheet-close" onclick="closeQuickPopup(null, 'quick-income-popup')">✕</button></div>
+    <div style="padding:10px 0">
+      <input type="date" id="qi-date" class="inp" style="margin-bottom:10px">
+      <input type="text" id="qi-item" class="inp" placeholder="รายการ *" style="margin-bottom:10px">
+      <input type="number" id="qi-amount" class="inp" placeholder="จำนวนเงิน *" style="margin-bottom:10px">
+      <select id="qi-room" class="inp" style="margin-bottom:10px">
+        <option value="">-- เลือกห้อง (ถ้ามี) --</option>
+      </select>
+      <input type="text" id="qi-note" class="inp" placeholder="หมายเหตุ" style="margin-bottom:10px">
+      <button onclick="saveQuickIncome()" class="btn bp" style="width:100%">✅ บันทึกรายรับ</button>
+    </div>
+  </div>
+</div>
+
+<div id="quick-expense-popup" class="overlay" onclick="closeQuickPopup(event, 'quick-expense-popup')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">💸 เพิ่มรายจ่าย<button class="sheet-close" onclick="closeQuickPopup(null, 'quick-expense-popup')">✕</button></div>
+    <div style="padding:10px 0">
+      <input type="date" id="qe-date" class="inp" style="margin-bottom:10px">
+      <input type="text" id="qe-item" class="inp" placeholder="รายการ *" style="margin-bottom:10px">
+      <input type="number" id="qe-amount" class="inp" placeholder="จำนวนเงิน *" style="margin-bottom:10px">
+      <select id="qe-category" class="inp" style="margin-bottom:10px">
+        <option value="">-- เลือกหมวดหมู่ --</option>
+        <option value="ค่าซ่อม">ค่าซ่อม</option>
+        <option value="ค่าของ">ค่าของ</option>
+        <option value="ค่าน้ำ">ค่าน้ำ</option>
+        <option value="ค่าไฟ">ค่าไฟ</option>
+        <option value="ค่าอินเทอร์เน็ต">ค่าอินเทอร์เน็ต</option>
+        <option value="ค่าจัดทำ">ค่าจัดทำ</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+      <input type="text" id="qe-note" class="inp" placeholder="หมายเหตุ" style="margin-bottom:10px">
+      <button onclick="saveQuickExpense()" class="btn bd" style="width:100%">✅ บันทึกรายจ่าย</button>
+    </div>
+  </div>
+</div>
+
+<div id="quick-checkin-popup" class="overlay" onclick="closeQuickPopup(event, 'quick-checkin-popup')">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📝 เช็คอินด่วน<button class="sheet-close" onclick="closeQuickPopup(null, 'quick-checkin-popup')">✕</button></div>
+    <div style="padding:10px 0">
+      <input type="date" id="qci-date" class="inp" placeholder="วันที่เช็คอิน" style="margin-bottom:10px">
+      <input type="date" id="qco-date" class="inp" placeholder="วันที่เช็คเอาท์" style="margin-bottom:10px">
+      <select id="qci-room" class="inp" style="margin-bottom:10px">
+        <option value="">-- เลือกห้อง --</option>
+      </select>
+      <input type="text" id="qci-name" class="inp" placeholder="ชื่อผู้เข้าพัก" style="margin-bottom:10px">
+      <input type="tel" id="qci-phone" class="inp" placeholder="เบอร์โทร" style="margin-bottom:10px">
+      <input type="number" id="qci-deposit" class="inp" placeholder="เงินมัดจำ" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <label class="po checked" onclick="selQCI(this)"><input type="radio" name="qci-pay" value="cash" checked><div class="pol"><span>💵 เงินสด</span></div></label>
+        <label class="po" onclick="selQCI(this)"><input type="radio" name="qci-pay" value="transfer"><div class="pol"><span>📱 โอน</span></div></label>
+      </div>
+      <button onclick="saveQuickCheckin()" class="btn bp" style="width:100%">✅ เช็คอิน</button>
+    </div>
+  </div>
+</div>
 
 <!-- ROOM DETAIL SHEET -->
 <div id="room-sheet" class="overlay" onclick="closeSheet(event)">
