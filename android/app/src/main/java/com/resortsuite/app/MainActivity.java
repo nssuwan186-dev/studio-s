@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.webkit.JavascriptInterface;
@@ -13,7 +12,6 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.webkit.WebViewClient;
-import android.webkit.FileChooser;
 import android.widget.Toast;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -47,8 +45,7 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient());
         
         webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePath, FileChooserParams fileChooserParams) {
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePath, WebChromeClient.FileChooserParams fileChooserParams) {
                 filePathCallback = filePath;
                 
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -58,19 +55,6 @@ public class MainActivity extends Activity {
                 Intent chooser = Intent.createChooser(intent, "Choose File");
                 startActivityForResult(chooser, FILE_CHOOSER_RESULT_CODE);
                 return true;
-            }
-        });
-        
-        webView.setDownloadListener(new DownloadListener() {
-            @Override
-            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
-                if (url.startsWith("blob:")) {
-                    Toast.makeText(MainActivity.this, "กำลังดาวน์โหลด...", Toast.LENGTH_SHORT).show();
-                } else {
-                    Intent i = new Intent(Intent.ACTION_VIEW);
-                    i.setData(Uri.parse(url));
-                    startActivity(i);
-                }
             }
         });
         
