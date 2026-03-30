@@ -1,0 +1,19 @@
+{
+  "name": "resort-suite-app",
+  "version": "4.0.0",
+  "description": "🏨 รีสอร์ท สวีท - ระบบจัดการห้องพัก v4",
+  "scripts": {
+    "build": "echo 'Build web assets complete'",
+    "start": "npx cap serve",
+    "sync": "npx cap sync",
+    "android": "npx cap run android",
+    "android:build": "npx cap build android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  }
+}
