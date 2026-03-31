@@ -1177,6 +1177,100 @@ async function genMonthly() {
     </div>`;
 }
 
+// =============================================================
+// DAILY REVENUE
+// =============================================================
+async function loadDailyRevenue() {
+  const date = document.getElementById('daily-rev-date').value || moment().format('YYYY-MM-DD');
+  document.getElementById('daily-rev-date').value = date;
+  
+  const txs = await db.transactions.getByDate(date);
+  const income = txs.reduce((s, t) => s + (t.receipt || 0), 0);
+  const expense = txs.reduce((s, t) => s + (t.payment || 0), 0);
+  
+  let html = `<div style="font-size:13px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div class="ab g"><div class="abl">รายรับ</div><div class="aba">฿${income.toLocaleString()}</div></div>
+      <div class="ab r"><div class="abl">รายจ่าย</div><div class="aba">฿${expense.toLocaleString()}</div></div>
+    </div>
+    <div class="ab b"><div class="abl">คงเหลือวันนี้</div><div class="aba">฿${(income - expense).toLocaleString()}</div></div>
+    <div style="margin-top:8px;color:var(--muted);font-size:11px">${txs.length} รายการ</div>
+  </div>`;
+  
+  document.getElementById('daily-rev-result').innerHTML = html;
+}
+
+// =============================================================
+// TOP CUSTOMERS
+// =============================================================
+async function loadTopCustomers() {
+  const custs = await db.customers.getAll();
+  const topCusts = custs
+    .filter(c => (c.total_stays || 0) > 0)
+    .sort((a, b) => (b.total_stays || 0) - (a.total_stays || 0))
+    .slice(0, 10);
+  
+  if (!topCusts.length) {
+    document.getElementById('top-cust-result').innerHTML = '<div class="empty">ไม่มีข้อมูล</div>';
+    return;
+  }
+  
+  let html = '<div style="font-size:12px">';
+  topCusts.forEach((c, i) => {
+    html += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div><span style="color:var(--accent);font-weight:700">${i+1}.</span> ${c.name}</div>
+      <div style="text-align:right">
+        <div style="color:var(--primary)">${c.total_stays || 0} ครั้ง</div>
+        <div style="color:var(--muted)">฿${(c.total_spent || 0).toLocaleString()}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('top-cust-result').innerHTML = html;
+}
+
+// =============================================================
+// EMPLOYEE SALARY SUMMARY
+// =============================================================
+async function loadEmpSalary() {
+  const emps = await db.employees.getAll();
+  const txs = await db.transactions.getAll();
+  
+  const salaryTx = txs.filter(t => t.item_name && t.item_name.includes('ค่าจ้าง'));
+  const salaryTotal = salaryTx.reduce((s, t) => s + (t.payment || 0), 0);
+  
+  const monthlyEmp = emps.filter(e => e.role === 'staff').length;
+  const managerEmp = emps.filter(e => e.role === 'manager').length;
+  const adminEmp = emps.filter(e => e.role === 'admin').length;
+  
+  let html = `<div style="font-size:12px">
+    <div class="ab" style="margin-bottom:8px">
+      <div class="abl">พนักงานทั้งหมด</div>
+      <div class="aba">${emps.length} คน</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+      <div style="text-align:center;padding:8px;background:var(--bg);border-radius:6px">
+        <div style="font-weight:700;font-size:16px;color:var(--danger)">${adminEmp}</div>
+        <div style="font-size:10px">Admin</div>
+      </div>
+      <div style="text-align:center;padding:8px;background:var(--bg);border-radius:6px">
+        <div style="font-weight:700;font-size:16px;color:var(--warning)">${managerEmp}</div>
+        <div style="font-size:10px">Manager</div>
+      </div>
+      <div style="text-align:center;padding:8px;background:var(--bg);border-radius:6px">
+        <div style="font-weight:700;font-size:16px;color:var(--info)">${monthlyEmp}</div>
+        <div style="font-size:10px">Staff</div>
+      </div>
+    </div>
+    <div class="ab g">
+      <div class="abl">จ่ายค่าจ้างแล้ว (รวม)</div>
+      <div class="aba">฿${salaryTotal.toLocaleString()}</div>
+    </div>
+  </div>`;
+  
+  document.getElementById('emp-salary-result').innerHTML = html;
+}
+
 async function expData(type) {
   let data, name, csv;
   if (type === 'transactions') {

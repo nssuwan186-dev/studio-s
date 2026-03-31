@@ -485,6 +485,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- REPORTS -->
   <section id="reports" class="sec">
     <div class="ptitle">📊 รายงาน</div>
+    
+    <!-- รายได้รายวัน -->
+    <div class="card">
+      <div class="ctitle">📅 รายได้รายวัน</div>
+      <input type="date" id="daily-rev-date" class="inp" style="margin-bottom:8px">
+      <button onclick="loadDailyRevenue()" class="btn bs bsm" style="width:100%">ดูรายวัน</button>
+      <div id="daily-rev-result" style="margin-top:10px"></div>
+    </div>
+    
+    <!-- ลูกค้าขาประจำ -->
+    <div class="card">
+      <div class="ctitle">👥 ลูกค้าขาประจำ</div>
+      <button onclick="loadTopCustomers()" class="btn bs bsm" style="width:100%">ดู Top 10</button>
+      <div id="top-cust-result" style="margin-top:10px"></div>
+    </div>
+    
+    <!-- สรุปค่าจ้างพนักงาน -->
+    <div class="card">
+      <div class="ctitle">👷 สรุปค่าจ้างพนักงาน</div>
+      <button onclick="loadEmpSalary()" class="btn bs bsm" style="width:100%">ดูค่าจ้าง</button>
+      <div id="emp-salary-result" style="margin-top:10px"></div>
+    </div>
+    
+    <!-- รายงานรายเดือน -->
     <div class="card">
       <div class="ctitle">📆 รายงานรายเดือน</div>
       <div style="display:flex;gap:7px;margin-bottom:4px">
