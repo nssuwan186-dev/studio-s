@@ -18,10 +18,40 @@ async function login() {
   const username = document.getElementById('login-user').value.trim();
   const password = document.getElementById('login-pass').value;
   if (!username || !password) { showToast('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน', 'err'); return; }
-  const emp = await db.employees.getByUsername(username);
-  if (!emp) { showToast('ไม่พบผู้ใช้', 'err'); return; }
-  if (emp.password !== password) { showToast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
-  if (emp.status !== 'active') { showToast('บัญชีถูกระงับ', 'err'); return; }
+  
+  let emp = null;
+  let loginMethod = 'local';
+  
+  if (isOnline) {
+    try {
+      const apiUser = await api.employees.login(username, password);
+      if (apiUser) {
+        emp = {
+          id: Date.now(),
+          username: apiUser.username,
+          name: apiUser.name,
+          role: apiUser.role,
+          position: apiUser.position,
+          status: 'active'
+        };
+        loginMethod = 'api';
+        const localEmp = await db.employees.getByUsername(username);
+        if (!localEmp) {
+          await db.employees.add(emp);
+        }
+      }
+    } catch (e) {
+      console.log('API login failed, trying local...');
+    }
+  }
+  
+  if (!emp) {
+    emp = await db.employees.getByUsername(username);
+    if (!emp) { showToast('ไม่พบผู้ใช้', 'err'); return; }
+    if (emp.password !== password) { showToast('รหัสผ่านไม่ถูกต้อง', 'err'); return; }
+    if (emp.status !== 'active') { showToast('บัญชีถูกระงับ', 'err'); return; }
+  }
+  
   currentUser = emp;
   localStorage.setItem('currentUser', JSON.stringify(emp));
   document.getElementById('login-user').value = '';
@@ -29,7 +59,15 @@ async function login() {
   updateNavForRole();
   updateUserDisplay();
   goSec('dashboard');
-  showToast(`ยินดีต้อนรับ ${emp.name}`);
+  showToast(`ยินดีต้อนรับ ${emp.name} (${loginMethod === 'api' ? 'ออนไลน์' : 'ออฟไลน์'})`);
+  
+  if (isOnline && syncEnabled) {
+    showToast('กำลัง sync ข้อมูล...');
+    const result = await syncAll();
+    if (result.success) {
+      showToast(`Sync สำเร็จ: ${result.results.customers} ลูกค้า, ${result.results.rooms} ห้อง`);
+    }
+  }
 }
 
 function logout() {
@@ -327,6 +365,7 @@ async function loadSettings() {
   document.getElementById('set-dep').value = appSettings.depositAmount || 200;
   document.getElementById('set-elec').value = appSettings.electricRate || 8;
   document.getElementById('set-water').value = appSettings.waterRate || 25;
+  loadApiSettings();
   const rooms = await db.rooms.getAll();
   const aCount = rooms.filter(r => r.building === 'A').length;
   const bCount = rooms.filter(r => r.building === 'B').length;
@@ -337,6 +376,11 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
+  const apiUrl = document.getElementById('set-api-url').value;
+  if (apiUrl) {
+    setApiUrl(apiUrl);
+  }
+  
   const settings = {
     openingBalance: parseInt(document.getElementById('set-open').value) || 0,
     depositAmount: parseInt(document.getElementById('set-dep').value) || 200,
@@ -347,6 +391,18 @@ async function saveSettings() {
   appSettings = settings;
   showToast('บันทึกการตั้งค่าแล้ว');
   loadDash();
+  
+  if (isOnline) {
+    await api.settings.update(settings);
+  }
+}
+
+function loadApiSettings() {
+  const savedUrl = localStorage.getItem('API_URL');
+  if (savedUrl) {
+    document.getElementById('set-api-url').value = savedUrl;
+  }
+  document.getElementById('set-sync-enabled').checked = localStorage.getItem('syncEnabled') === 'true';
 }
 
 async function regenRooms() {
