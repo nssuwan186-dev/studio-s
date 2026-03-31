@@ -4,21 +4,21 @@ uvicorn[standard]==0.24.0
 
 # Database
 sqlalchemy==2.0.23
-pymysql==1.1.0
+pymysql==1.1.1
 
 # Authentication
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 passlib[bcrypt]==1.7.4
 
 # Utilities
 python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
-python-multipart==0.0.6
+python-multipart==0.0.22
 
 # Excel Export
 openpyxl==3.1.2
 pandas==2.2.3
 
 # HTTP
-requests==2.31.0
+requests==2.33.0
