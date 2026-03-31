@@ -1,6 +1,7 @@
 """
 Configuration Settings
 """
+import os
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -10,17 +11,21 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Database
-    DB_HOST: str = "localhost"
-    DB_PORT: int = 3306
-    DB_NAME: str = "vipat_hotel"
-    DB_USER: str = "root"
-    DB_PASSWORD: str = ""
+    DATABASE_URL: str = "sqlite:///./vipat_hotel.db"
     
     @property
     def DATABASE_URL(self) -> str:
-        if self.DB_USER == "root" and self.DB_PASSWORD == "":
-            return "sqlite:///./vipat_hotel.db"
-        return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        url = os.getenv("DATABASE_URL", "")
+        if url:
+            return url
+        if os.getenv("DB_HOST"):
+            user = os.getenv("DB_USER", "root")
+            pw = os.getenv("DB_PASSWORD", "")
+            host = os.getenv("DB_HOST", "localhost")
+            port = os.getenv("DB_PORT", "3306")
+            name = os.getenv("DB_NAME", "vipat_hotel")
+            return f"mysql+pymysql://{user}:{pw}@{host}:{port}/{name}"
+        return "sqlite:///./vipat_hotel.db"
     
     # JWT
     SECRET_KEY: str = "vipat-secret-key-change-in-production"
