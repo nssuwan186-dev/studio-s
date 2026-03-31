@@ -27,5 +27,6 @@ jobs:
         with:
           tag_name: v${{ github.run_number }}
           files: android/app/build/outputs/apk/debug/app-debug.apk
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
