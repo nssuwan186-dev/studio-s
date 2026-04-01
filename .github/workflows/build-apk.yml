@@ -17,18 +17,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - uses: android-actions/setup-android@v3
-      - name: Delete old releases
+      - name: Delete ALL old releases first
         run: |
-          for tag in $(git tag -l "build-*" 2>/dev/null); do
+          for tag in $(git tag -l 2>/dev/null); do
             gh release delete "$tag" --yes 2>/dev/null || true
             git tag -d "$tag" 2>/dev/null || true
           done
-          for tag in $(git tag -l "sha-*" 2>/dev/null); do
-            gh release delete "$tag" --yes 2>/dev/null || true
-            git tag -d "$tag" 2>/dev/null || true
-          done
-          git push origin :refs/tags/build-* 2>/dev/null || true
-          git push origin :refs/tags/sha-* 2>/dev/null || true
+          git push origin --delete $(git tag -l 2>/dev/null) 2>/dev/null || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm install
@@ -36,10 +31,11 @@ jobs:
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Upload APK
         run: |
-          TAG="build-$(date +'%Y%m%d-%H%M%S')"
+          TAG="v4.1.0"
+          gh release delete "$TAG" --yes 2>/dev/null || true
           gh release create "$TAG" \
             android/app/build/outputs/apk/debug/app-debug.apk \
-            --title "Release $TAG (v4.1.0)" \
-            --notes "Auto build - Version 4.1.0"
+            --title "VIPAT Hotel v4.1.0" \
+            --notes "Release v4.1.0 - Stable Build"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
