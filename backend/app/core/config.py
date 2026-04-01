@@ -13,20 +13,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./vipat_hotel.db"
     
-    @property
-    def DATABASE_URL(self) -> str:
-        url = os.getenv("DATABASE_URL", "")
-        if url:
-            return url
-        if os.getenv("DB_HOST"):
-            user = os.getenv("DB_USER", "root")
-            pw = os.getenv("DB_PASSWORD", "")
-            host = os.getenv("DB_HOST", "localhost")
-            port = os.getenv("DB_PORT", "3306")
-            name = os.getenv("DB_NAME", "vipat_hotel")
-            return f"mysql+pymysql://{user}:{pw}@{host}:{port}/{name}"
-        return "sqlite:///./vipat_hotel.db"
-    
     # JWT
     SECRET_KEY: str = "vipat-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
@@ -39,8 +25,16 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
-@lru_cache()
-def get_settings():
-    return Settings()
-
-settings = get_settings()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Override DATABASE_URL if environment variables are set
+        url = os.getenv("DATABASE_URL", "")
+        if url:
+            self.DATABASE_URL = url
+        elif os.getenv("DB_HOST"):
+            user = os.getenv("DB_USER", "root")
+            pw = os.getenv("DB_PASSWORD", "")
+            host = os.getenv("DB_HOST", "localhost")
+            port = os.getenv("DB_PORT", "3306")
+            name = os.getenv("DB_NAME", "vipat_hotel")
+            self.DATABASE_URL = f"mysql+pymysql://{user}:{pw}@{host}:{port}/{name}"

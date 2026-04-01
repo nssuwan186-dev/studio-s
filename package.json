@@ -1,7 +1,7 @@
 {
   "name": "resort-suite-app",
-  "version": "4.0.0",
-  "description": "🏨 รีสอร์ท สวีท - ระบบจัดการห้องพัก v4",
+  "version": "4.1.0",
+  "description": "🏨 รีสอร์ท สวีท - ระบบจัดการห้องพัก v4.1",
   "scripts": {
     "build": "echo 'Build web assets complete'",
     "start": "npx cap serve",
