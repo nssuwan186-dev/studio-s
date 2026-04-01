@@ -17,18 +17,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - uses: android-actions/setup-android@v3
-      - name: Delete old releases
-        run: |
-          for release in v4.1.0 build-20260401-055128 build-20260401-054209 build-20260401-053024 sha-03fba78 build-20260331-114143; do
-            gh release delete "$release" --yes 2>/dev/null || true
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm install
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Create release v4.1.0
         run: |
+          gh release delete v4.1.0 --yes 2>/dev/null || true
           gh release create v4.1.0 \
             android/app/build/outputs/apk/debug/app-debug.apk \
             --title "VIPAT Hotel v4.1.0" \
