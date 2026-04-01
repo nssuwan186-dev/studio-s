@@ -17,16 +17,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - uses: android-actions/setup-android@v3
-      - name: Delete ALL old releases on GitHub
+      - name: Delete old releases
         run: |
-          for release in $(gh release list --repo nssuwan186-dev/studio-s --limit 100 --json tagName -q '.[].tagName' 2>/dev/null); do
-            echo "Deleting release: $release"
+          for release in v4.1.0 build-20260401-055128 build-20260401-054209 build-20260401-053024 sha-03fba78 build-20260331-114143; do
             gh release delete "$release" --yes 2>/dev/null || true
           done
-          for tag in $(git tag -l 2>/dev/null); do
-            git tag -d "$tag" 2>/dev/null || true
-          done
-          git push origin --tags 2>/dev/null || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm install
