@@ -77,7 +77,6 @@ function goSec(id) {
   // Load section data
   switch(id) {
     case 'dashboard': loadDash(); break;
-    case 'checkin': loadCIRooms(); break;
     case 'rooms': loadRooms(); break;
     case 'customers': loadCusts(); break;
     case 'accounting': loadAcc(); break;
@@ -262,6 +261,261 @@ async function loadDash() {
 }
 
 // =============================================================
+// CHECK-IN (Popup only)
+// =============================================================
+async function openQuickCheckin() {
+  console.log('[CheckIn] Opening check-in popup...');
+  
+  try {
+    // Load available rooms
+    const rooms = await db.rooms.getByStatus('available');
+    const sel = document.getElementById('qci-room');
+    if (sel) {
+      sel.innerHTML = '<option value="">-- เลือกห้องว่าง --</option>' +
+        rooms.map(r => `<option value="${r.id}" data-p="${r.price_per_night}" data-n="${r.room_number}" data-t="${r.room_type}">${r.room_number} - ${r.room_type} (฿${r.price_per_night})</option>`).join('');
+    }
+    
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const ciDate = document.getElementById('qci-date');
+    const coDate = document.getElementById('qco-date');
+    if (ciDate) ciDate.value = today;
+    if (coDate) coDate.value = tomorrow;
+    
+    // Reset form
+    clearCust();
+    const deposit = document.getElementById('qci-deposit');
+    if (deposit) deposit.value = state.settings?.depositAmount || 200;
+    const efee = document.getElementById('qci-efee');
+    if (efee) efee.value = 0;
+    const wfee = document.getElementById('qci-wfee');
+    if (wfee) wfee.value = 0;
+    const disc = document.getElementById('qci-disc');
+    if (disc) disc.value = 0;
+    
+    document.getElementById('quick-checkin-popup')?.classList.add('show');
+    console.log('[CheckIn] Popup opened with', rooms.length, 'rooms');
+  } catch (e) {
+    console.error('[CheckIn] Error:', e);
+    showToast('เกิดข้อผิดพลาด', 'err');
+  }
+}
+
+function qciRoomChanged() {
+  const sel = document.getElementById('qci-room');
+  const opt = sel?.options[sel.selectedIndex];
+  
+  if (!opt?.value) return;
+  
+  const price = parseInt(opt.dataset.p) || 0;
+  const rateEl = document.getElementById('qci-rate');
+  if (rateEl) rateEl.value = price;
+  
+  qciCalcTotal();
+}
+
+function qciCalcTotal() {
+  const ciDate = document.getElementById('qci-date')?.value;
+  const coDate = document.getElementById('qco-date')?.value;
+  const rate = parseInt(document.getElementById('qci-rate')?.value) || 0;
+  const efee = parseInt(document.getElementById('qci-efee')?.value) || 0;
+  const wfee = parseInt(document.getElementById('qci-wfee')?.value) || 0;
+  const dep = parseInt(document.getElementById('qci-deposit')?.value) || 0;
+  const disc = parseInt(document.getElementById('qci-disc')?.value) || 0;
+  
+  if (!ciDate || !coDate) return;
+  
+  const ci = new Date(ciDate);
+  const co = new Date(coDate);
+  const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
+  
+  const roomTotal = rate * nights;
+  const subtotal = roomTotal + efee + wfee;
+  const grandTotal = subtotal - disc + dep;
+  
+  const nightsEl = document.getElementById('qci-nights');
+  const roomTotalEl = document.getElementById('qci-room-total');
+  const grandEl = document.getElementById('qci-grand-total');
+  
+  if (nightsEl) nightsEl.value = nights;
+  if (roomTotalEl) roomTotalEl.value = roomTotal;
+  if (grandEl) grandEl.textContent = `฿${grandTotal.toLocaleString()}`;
+}
+
+async function saveQuickCheckin() {
+  const roomId = document.getElementById('qci-room')?.value;
+  const ciDate = document.getElementById('qci-date')?.value;
+  const coDate = document.getElementById('qco-date')?.value;
+  
+  if (!roomId || !ciDate || !coDate) {
+    showToast('กรุณาเลือกห้องและวันที่', 'err');
+    return;
+  }
+  
+  try {
+    const room = await db.rooms.getById(parseInt(roomId));
+    if (!room) {
+      showToast('ไม่พบห้อง', 'err');
+      return;
+    }
+    
+    const rate = parseInt(document.getElementById('qci-rate')?.value) || room.price_per_night;
+    const efee = parseInt(document.getElementById('qci-efee')?.value) || 0;
+    const wfee = parseInt(document.getElementById('qci-wfee')?.value) || 0;
+    const dep = parseInt(document.getElementById('qci-deposit')?.value) || 0;
+    const disc = parseInt(document.getElementById('qci-disc')?.value) || 0;
+    
+    const ci = new Date(ciDate);
+    const co = new Date(coDate);
+    const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
+    const total = (rate * nights) + efee + wfee - disc;
+    
+    const payMethod = document.querySelector('input[name="qci-pay"]:checked')?.value || 'cash';
+    
+    const bookingId = 'B' + Date.now();
+    await db.bookings.add({
+      booking_id: bookingId,
+      customer_id: selCust?.customer_id || 'WALK-IN',
+      room_id: room.id,
+      check_in_date: ciDate,
+      check_out_date: coDate,
+      total_amount: total,
+      deposit: dep,
+      payment_method: payMethod,
+      status: 'checked_in'
+    });
+    
+    await db.rooms.update(room.id, { status: 'occupied' });
+    
+    // Update customer stats
+    if (selCust?.customer_id) {
+      await db.customers.updateStats(selCust.customer_id, 1, total, ciDate);
+    }
+    
+    // Record deposit as income
+    if (dep > 0) {
+      await db.transactions.add({
+        date: ciDate,
+        item_name: `เงินมัดจำ ห้อง ${room.room_number}`,
+        receipt: dep,
+        payment: 0,
+        room_number: room.room_number,
+        note: payMethod,
+        type: 'income'
+      });
+    }
+    
+    showToast(`✅ เช็คอินสำเร็จ ห้อง ${room.room_number}`);
+    clearCust();
+    closeQuickPopup(null, 'quick-checkin-popup');
+    loadDash();
+  } catch (e) {
+    console.error('[CheckIn] Error:', e);
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'err');
+  }
+}
+
+// =============================================================
+// OCR
+// =============================================================
+async function handleOCR(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const box = document.getElementById('ocr-box');
+  const status = document.getElementById('ocr-status');
+  
+  if (box) box.classList.add('scanning');
+  if (status) {
+    status.style.display = 'block';
+    status.className = 'ocr-status wait';
+    status.textContent = '⏳ กำลังสแกน...';
+  }
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      if (typeof Tesseract !== 'undefined') {
+        if (status) status.textContent = '⏳ ประมวลผล OCR...';
+        const result = await Tesseract.recognize(file, 'tha+eng');
+        const text = result.data.text;
+        parseIDCard(text);
+        if (status) {
+          status.className = 'ocr-status ok';
+          status.textContent = '✅ สแกนสำเร็จ! ตรวจสอบข้อมูลด้านล่าง';
+        }
+      } else {
+        if (status) {
+          status.className = 'ocr-status wait';
+          status.textContent = '⚠️ OCR ไม่พร้อม กรุณากรอกข้อมูลเอง';
+        }
+      }
+    } catch (err) {
+      if (status) {
+        status.className = 'ocr-status err';
+        status.textContent = '❌ สแกนไม่สำเร็จ';
+      }
+    }
+    if (box) box.classList.remove('scanning');
+  };
+  reader.readAsDataURL(file);
+}
+
+function parseIDCard(text) {
+  const cleanText = text.replace(/\n/g, ' ').trim();
+  
+  // Find ID card number
+  const idMatch = cleanText.match(/(\d[\d\s-]{12,17}\d)/);
+  if (idMatch) {
+    const idNum = idMatch[0].replace(/[\s-]/g, '');
+    if (idNum.length >= 13) {
+      findCustByIdCard(idNum);
+    }
+  }
+  
+  // Find name
+  const namePatterns = [
+    /(?:นาย|นาง|นางสาว|Mr\.|Mrs\.|Miss\.?|Ms\.?)\s+([ก-๏\s]+)/i,
+    /ชื่อ\s*[:\-]?\s*([ก-๏\s]+)/i
+  ];
+  
+  for (const pattern of namePatterns) {
+    const match = cleanText.match(pattern);
+    if (match && match[1]) {
+      const name = match[1].trim().split(' ').slice(0, 3).join(' ');
+      if (name.length > 2) {
+        const csearch = document.getElementById('csearch');
+        if (csearch) csearch.value = name;
+        searchCust(name);
+        break;
+      }
+    }
+  }
+}
+
+async function findCustByIdCard(idCard) {
+  const customers = await db.customers.search(idCard);
+  if (customers.length > 0) {
+    const c = customers[0];
+    selectCust(c.customer_id, c.name, c.phone || '');
+    showToast(`✅ พบลูกค้า: ${c.name}`);
+  } else {
+    const name = document.getElementById('csearch')?.value || '';
+    if (confirm(`ไม่พบลูกค้าเลขบัตร ${idCard}\nต้องการสร้างลูกค้าใหม่หรือไม่?`)) {
+      const newName = prompt('ชื่อลูกค้า:', name || '');
+      if (newName) {
+        const phone = prompt('เบอร์โทร:', '') || '';
+        const id = await db.customers.generateId();
+        await db.customers.add({ customer_id: id, name: newName, phone, id_card: idCard });
+        selectCust(id, newName, phone);
+        showToast('เพิ่มลูกค้าใหม่สำเร็จ');
+      }
+    }
+  }
+}
+
+// =============================================================
 // ROOMS
 // =============================================================
 async function loadRooms() {
@@ -370,166 +624,6 @@ function closeRoomModal(e) {
   if (!e || e.target.id === 'room-overlay') {
     const overlay = document.getElementById('room-overlay');
     if (overlay) overlay.classList.remove('show');
-  }
-}
-
-// =============================================================
-// CHECK-IN
-// =============================================================
-async function loadCIRooms() {
-  console.log('[CheckIn] Loading available rooms...');
-  
-  try {
-    const rooms = await db.rooms.getByStatus('available');
-    const sel = document.getElementById('rsel');
-    
-    if (!sel) {
-      console.error('[CheckIn] Room select not found');
-      return;
-    }
-    
-    sel.innerHTML = '<option value="">-- เลือกห้องว่าง --</option>' +
-      rooms.map(r => `<option value="${r.id}" data-p="${r.price_per_night}" data-n="${r.room_number}" data-t="${r.room_type}">${r.room_number} - ${r.room_type} (฿${r.price_per_night})</option>`).join('');
-    
-    // Set default dates
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-    
-    const ciDate = document.getElementById('ci-date');
-    const coDate = document.getElementById('co-date');
-    if (ciDate) ciDate.value = today;
-    if (coDate) coDate.value = tomorrow;
-    
-    console.log('[CheckIn] Loaded:', rooms.length, 'rooms');
-  } catch (e) {
-    console.error('[CheckIn] Error:', e);
-  }
-}
-
-function updateRoomInfo() {
-  const sel = document.getElementById('rsel');
-  const opt = sel.options[sel.selectedIndex];
-  const info = document.getElementById('rinfo');
-  
-  if (!opt.value) {
-    if (info) info.style.display = 'none';
-    return;
-  }
-  
-  const price = opt.dataset.p;
-  const number = opt.dataset.n;
-  const type = opt.dataset.t;
-  
-  if (info) {
-    info.style.display = 'block';
-    info.innerHTML = `<strong>ห้อง ${number}</strong><br>${type}<br>ราคา: ฿${price}/คืน`;
-  }
-  
-  document.getElementById('rrate').value = price;
-  calcTotal();
-}
-
-function calcTotal() {
-  const ciDate = document.getElementById('ci-date')?.value;
-  const coDate = document.getElementById('co-date')?.value;
-  const rate = parseInt(document.getElementById('rrate')?.value) || 0;
-  const efee = parseInt(document.getElementById('efee')?.value) || 0;
-  const wfee = parseInt(document.getElementById('wfee')?.value) || 0;
-  const dep = parseInt(document.getElementById('dep')?.value) || 0;
-  const disc = parseInt(document.getElementById('disc')?.value) || 0;
-  
-  if (!ciDate || !coDate) return;
-  
-  const ci = new Date(ciDate);
-  const co = new Date(coDate);
-  const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
-  
-  const roomTotal = rate * nights;
-  const subtotal = roomTotal + efee + wfee;
-  const grandTotal = subtotal - disc + dep;
-  
-  const nightsEl = document.getElementById('nights');
-  const rtotalEl = document.getElementById('rtotal');
-  const grandEl = document.getElementById('grand-total');
-  
-  if (nightsEl) nightsEl.value = nights;
-  if (rtotalEl) rtotalEl.value = roomTotal;
-  if (grandEl) grandEl.textContent = `฿${grandTotal.toLocaleString()}`;
-  
-  // Summary
-  const sumRoom = document.getElementById('sum-room');
-  const sumElec = document.getElementById('sum-elec');
-  const sumWater = document.getElementById('sum-water');
-  const sumDisc = document.getElementById('sum-disc');
-  const sumDep = document.getElementById('sum-dep');
-  
-  if (sumRoom) sumRoom.textContent = `฿${roomTotal.toLocaleString()}`;
-  if (sumElec) sumElec.textContent = `฿${efee.toLocaleString()}`;
-  if (sumWater) sumWater.textContent = `฿${wfee.toLocaleString()}`;
-  if (sumDisc) sumDisc.textContent = `-฿${disc.toLocaleString()}`;
-  if (sumDep) sumDep.textContent = `฿${dep.toLocaleString()}`;
-}
-
-async function doCheckin() {
-  const roomId = document.getElementById('rsel')?.value;
-  const ciDate = document.getElementById('ci-date')?.value;
-  const coDate = document.getElementById('co-date')?.value;
-  
-  if (!roomId || !ciDate || !coDate) {
-    showToast('กรุณาเลือกห้องและวันที่', 'err');
-    return;
-  }
-  
-  try {
-    const room = await db.rooms.getById(parseInt(roomId));
-    if (!room) {
-      showToast('ไม่พบห้อง', 'err');
-      return;
-    }
-    
-    const rate = parseInt(document.getElementById('rrate')?.value) || room.price_per_night;
-    const efee = parseInt(document.getElementById('efee')?.value) || 0;
-    const wfee = parseInt(document.getElementById('wfee')?.value) || 0;
-    const dep = parseInt(document.getElementById('dep')?.value) || 0;
-    const disc = parseInt(document.getElementById('disc')?.value) || 0;
-    
-    const ci = new Date(ciDate);
-    const co = new Date(coDate);
-    const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
-    const total = (rate * nights) + efee + wfee - disc;
-    
-    const bookingId = 'B' + Date.now();
-    await db.bookings.add({
-      booking_id: bookingId,
-      customer_id: selCust?.customer_id || 'WALK-IN',
-      room_id: room.id,
-      check_in_date: ciDate,
-      check_out_date: coDate,
-      total_amount: total,
-      deposit: dep,
-      status: 'checked_in'
-    });
-    
-    await db.rooms.update(room.id, { status: 'occupied' });
-    
-    if (dep > 0) {
-      await db.transactions.add({
-        date: ciDate,
-        item_name: `เงินมัดจำ ห้อง ${room.room_number}`,
-        receipt: dep,
-        payment: 0,
-        room_number: room.room_number,
-        note: 'deposit',
-        type: 'income'
-      });
-    }
-    
-    showToast(`✅ เช็คอินสำเร็จ ห้อง ${room.room_number}`);
-    clearCust();
-    goSec('dashboard');
-  } catch (e) {
-    console.error('[CheckIn] Error:', e);
-    showToast('เกิดข้อผิดพลาด: ' + e.message, 'err');
   }
 }
 
@@ -796,66 +890,11 @@ async function addEmployee() {
 }
 
 // =============================================================
-// QUICK ACTIONS
+// QUICK ACTIONS (Popup helpers)
 // =============================================================
 function closeQuickPopup(e, id) {
   if (!e || e.target.id === id) {
     document.getElementById(id)?.classList.remove('show');
-  }
-}
-
-async function openQuickCheckin() {
-  const rooms = await db.rooms.getByStatus('available');
-  const sel = document.getElementById('qci-room');
-  if (sel) {
-    sel.innerHTML = '<option value="">-- เลือกห้อง --</option>' +
-      rooms.map(r => `<option value="${r.room_number}">${r.room_number} - ${r.room_type} (฿${r.price_per_night})</option>`).join('');
-  }
-  document.getElementById('quick-checkin-popup')?.classList.add('show');
-}
-
-async function saveQuickCheckin() {
-  const room_number = document.getElementById('qci-room')?.value;
-  const check_in_date = document.getElementById('qci-date')?.value;
-  const check_out_date = document.getElementById('qco-date')?.value;
-  
-  if (!room_number || !check_in_date || !check_out_date) {
-    showToast('กรุณากรอกข้อมูลให้ครบ', 'err');
-    return;
-  }
-  
-  try {
-    const room = await db.rooms.getByNumber(room_number);
-    if (!room) {
-      showToast('ไม่พบห้อง', 'err');
-      return;
-    }
-    
-    const ci = new Date(check_in_date);
-    const co = new Date(check_out_date);
-    const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
-    const total = room.price_per_night * nights;
-    
-    const booking_id = 'B' + Date.now();
-    await db.bookings.add({
-      booking_id,
-      customer_id: 'WALK-IN',
-      room_id: room.id,
-      check_in_date,
-      check_out_date,
-      total_amount: total,
-      deposit: 0,
-      status: 'checked_in'
-    });
-    
-    await db.rooms.update(room.id, { status: 'occupied' });
-    
-    showToast(`✅ เช็คอินสำเร็จ ห้อง ${room_number}`);
-    closeQuickPopup(null, 'quick-checkin-popup');
-    loadDash();
-  } catch (e) {
-    console.error('[QuickCI] Error:', e);
-    showToast('เกิดข้อผิดพลาด', 'err');
   }
 }
 
@@ -873,13 +912,13 @@ async function saveQuickGuest() {
     showToast('กรุณากรอกชื่อ', 'err');
     return;
   }
-  
+
   try {
     const phone = document.getElementById('qg-phone')?.value.trim() || '';
     const id_card = document.getElementById('qg-idcard')?.value.trim() || '';
     const address = document.getElementById('qg-address')?.value.trim() || '';
     const customer_id = 'C' + Date.now();
-    
+
     await db.customers.add({ customer_id, name, phone, id_card, address, total_stays: 0, total_spent: 0 });
     showToast('✅ เพิ่มผู้เข้าพักสำเร็จ');
     closeQuickPopup(null, 'quick-guest-popup');
@@ -902,12 +941,12 @@ async function saveQuickIncome() {
   const date = document.getElementById('qi-date')?.value;
   const item_name = document.getElementById('qi-item')?.value.trim();
   const receipt = parseInt(document.getElementById('qi-amount')?.value) || 0;
-  
+
   if (!item_name || receipt <= 0) {
     showToast('กรุณากรอกรายการและจำนวนเงิน', 'err');
     return;
   }
-  
+
   try {
     await db.transactions.add({ date, item_name, receipt, payment: 0, room_number: '', note: '', type: 'income' });
     showToast('✅ เพิ่มรายรับสำเร็จ');
@@ -934,12 +973,12 @@ async function saveQuickExpense() {
   const payment = parseInt(document.getElementById('qe-amount')?.value) || 0;
   const category = document.getElementById('qe-category')?.value;
   const note = document.getElementById('qe-note')?.value.trim();
-  
+
   if (!item_name || payment <= 0) {
     showToast('กรุณากรอกรายการและจำนวนเงิน', 'err');
     return;
   }
-  
+
   try {
     const fullNote = category ? `${category}${note ? ' - ' + note : ''}` : note;
     await db.transactions.add({ date, item_name, payment, receipt: 0, room_number: '', note: fullNote, type: 'expense' });
@@ -1105,14 +1144,12 @@ window.searchCust = searchCust;
 window.selectCust = selectCust;
 window.clearCust = clearCust;
 window.addNewCust = addNewCust;
-window.updateRoomInfo = updateRoomInfo;
-window.calcTotal = calcTotal;
-window.doCheckin = doCheckin;
 window.loadCusts = loadCusts;
 window.showToast = showToast;
-window.selPay = selPay;
 window.selQCI = selQCI;
-window.openRoomFilter = openRoomFilter;
+window.qciRoomChanged = qciRoomChanged;
+window.qciCalcTotal = qciCalcTotal;
+window.handleOCR = handleOCR;
 window.useHistory = useHistory;
 window.exportData = exportData;
 window.importData = importData;
