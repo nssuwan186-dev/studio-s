@@ -1,40 +1,27 @@
 /**
- * Resort Suite v5 - IndexedDB Database Layer
- * 
- * @module db
- * @description Modern storage with IndexedDB for better performance and larger capacity
+ * Resort Suite v5.2 - Hotel ERP Database
+ * แยกชัดเจน: รายวัน (โรงแรม) vs รายเดือน (หอพัก)
+ * พร้อมระบบภาษีอัตโนมัติ (VAT 7%, อบจ. 1%)
  */
 
 import { openDB } from 'idb';
 
-// =============================================================
-// CONSTANTS
-// =============================================================
-
-const DB_NAME = 'resort-suite-v5';
+const DB_NAME = 'hotel-erp-v5.2';
 const DB_VERSION = 1;
 
 const STORES = {
   rooms: 'rooms',
-  customers: 'customers',
-  bookings: 'bookings',
+  daily_guests: 'daily_guests',       // ผู้เข้าพักรายวัน (โรงแรม)
+  monthly_tenants: 'monthly_tenants',  // ผู้เช่ารายเดือน (หอพัก)
+  master_data: 'master_data',          // Single Source of Truth
   transactions: 'transactions',
   settings: 'settings',
   employees: 'employees',
-  images: 'images',
-  sync: 'sync'
+  images: 'images'
 };
-
-// =============================================================
-// DATABASE INSTANCE
-// =============================================================
 
 let dbInstance = null;
 
-/**
- * Get or create database instance
- * @returns {Promise<IDBPDatabase>}
- */
 async function getDB() {
   if (dbInstance) return dbInstance;
   
@@ -46,56 +33,68 @@ async function getDB() {
         roomStore.createIndex('room_number', 'room_number', { unique: true });
         roomStore.createIndex('building', 'building');
         roomStore.createIndex('status', 'status');
-        roomStore.createIndex('floor', 'floor');
+        roomStore.createIndex('rental_type', 'rental_type'); // 'daily' or 'monthly'
       }
 
-      // Customers store
-      if (!db.objectStoreNames.contains(STORES.customers)) {
-        const customerStore = db.createObjectStore(STORES.customers, { keyPath: 'customer_id' });
-        customerStore.createIndex('name', 'name');
-        customerStore.createIndex('phone', 'phone');
-        customerStore.createIndex('id_card', 'id_card');
+      // Daily Guests (โรงแรม)
+      if (!db.objectStoreNames.contains(STORES.daily_guests)) {
+        const guestStore = db.createObjectStore(STORES.daily_guests, { keyPath: 'RCP_ID' });
+        guestStore.createIndex('Customer_Name', 'Customer_Name');
+        guestStore.createIndex('Customer_Phone', 'Customer_Phone');
+        guestStore.createIndex('Citizen_ID_Passport', 'Citizen_ID_Passport');
+        guestStore.createIndex('Check_In_Date', 'Check_In_Date');
+        guestStore.createIndex('Check_Out_Date', 'Check_Out_Date');
+        guestStore.createIndex('Room_ID', 'Room_ID');
+        guestStore.createIndex('Payment_Status', 'Payment_Status');
       }
 
-      // Bookings store
-      if (!db.objectStoreNames.contains(STORES.bookings)) {
-        const bookingStore = db.createObjectStore(STORES.bookings, { keyPath: 'booking_id' });
-        bookingStore.createIndex('customer_id', 'customer_id');
-        bookingStore.createIndex('room_id', 'room_id');
-        bookingStore.createIndex('status', 'status');
-        bookingStore.createIndex('check_in_date', 'check_in_date');
-        bookingStore.createIndex('check_out_date', 'check_out_date');
+      // Monthly Tenants (หอพัก)
+      if (!db.objectStoreNames.contains(STORES.monthly_tenants)) {
+        const tenantStore = db.createObjectStore(STORES.monthly_tenants, { keyPath: 'RCP_ID' });
+        tenantStore.createIndex('Customer_Name', 'Customer_Name');
+        tenantStore.createIndex('Customer_Phone', 'Customer_Phone');
+        tenantStore.createIndex('Citizen_ID_Passport', 'Citizen_ID_Passport');
+        tenantStore.createIndex('Lease_Start', 'Lease_Start');
+        tenantStore.createIndex('Lease_End', 'Lease_End');
+        tenantStore.createIndex('Room_ID', 'Room_ID');
+        tenantStore.createIndex('Payment_Status', 'Payment_Status');
       }
 
-      // Transactions store
+      // Master Data - Single Source of Truth
+      if (!db.objectStoreNames.contains(STORES.master_data)) {
+        const masterStore = db.createObjectStore(STORES.master_data, { keyPath: 'RCP_ID' });
+        masterStore.createIndex('Transaction_Date', 'Transaction_Date');
+        masterStore.createIndex('Customer_Name', 'Customer_Name');
+        masterStore.createIndex('Customer_Phone', 'Customer_Phone');
+        masterStore.createIndex('Rental_Type', 'Rental_Type'); // 'daily' or 'monthly'
+        masterStore.createIndex('Check_In_Date', 'Check_In_Date');
+        masterStore.createIndex('Room_ID', 'Room_ID');
+        masterStore.createIndex('Payment_Status', 'Payment_Status');
+      }
+
+      // Transactions
       if (!db.objectStoreNames.contains(STORES.transactions)) {
         const txStore = db.createObjectStore(STORES.transactions, { keyPath: 'id', autoIncrement: true });
         txStore.createIndex('date', 'date');
         txStore.createIndex('type', 'type');
-        txStore.createIndex('room_number', 'room_number');
+        txStore.createIndex('rental_type', 'rental_type');
       }
 
-      // Settings store
+      // Settings
       if (!db.objectStoreNames.contains(STORES.settings)) {
         db.createObjectStore(STORES.settings, { keyPath: 'key' });
       }
 
-      // Employees store
+      // Employees
       if (!db.objectStoreNames.contains(STORES.employees)) {
         const empStore = db.createObjectStore(STORES.employees, { keyPath: 'id', autoIncrement: true });
         empStore.createIndex('username', 'username', { unique: true });
         empStore.createIndex('role', 'role');
-        empStore.createIndex('status', 'status');
       }
 
-      // Images store
+      // Images
       if (!db.objectStoreNames.contains(STORES.images)) {
         db.createObjectStore(STORES.images, { keyPath: 'id' });
-      }
-
-      // Sync metadata store
-      if (!db.objectStoreNames.contains(STORES.sync)) {
-        db.createObjectStore(STORES.sync, { keyPath: 'key' });
       }
     }
   });
@@ -104,22 +103,82 @@ async function getDB() {
 }
 
 // =============================================================
+// TAX CALCULATION ENGINE
+// =============================================================
+
+const TaxCalculator = {
+  /**
+   * คำนวณภาษีอัตโนมัติ
+   * VAT 7% (ถอยจากค่าห้องที่รวม VAT แล้ว)
+   * ภาษี อบจ. 1% (จากค่าห้อง)
+   */
+  calculate: (totalRoomCharge, serviceFee = 0) => {
+    const totalIncome = totalRoomCharge + serviceFee;
+    
+    // VAT 7% - ถอยจากยอดรวมที่รวม VAT แล้ว
+    const vatBase = totalRoomCharge / 1.07;
+    const vatAmount = vatBase * 0.07;
+    
+    // ภาษี อบจ. 1% - จากค่าห้อง (ไม่รวม Service Fee)
+    const paoTax = totalRoomCharge * 0.01;
+    
+    // รายได้สุทธิ
+    const netRevenue = totalRoomCharge - vatAmount - paoTax;
+    
+    return {
+      totalRoomCharge: Math.round(totalRoomCharge * 100) / 100,
+      serviceFee: Math.round(serviceFee * 100) / 100,
+      totalIncome: Math.round(totalIncome * 100) / 100,
+      vatBase: Math.round(vatBase * 100) / 100,
+      vatAmount: Math.round(vatAmount * 100) / 100,
+      paoTax: Math.round(paoTax * 100) / 100,
+      netRevenue: Math.round(netRevenue * 100) / 100
+    };
+  }
+};
+
+// =============================================================
+// ID GENERATORS
+// =============================================================
+
+const IDGenerator = {
+  // เลขที่ใบเสร็จ: VP + YYMMDD + XXX
+  receipt: () => {
+    const now = new Date();
+    const date = `${now.getFullYear().toString().slice(2)}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}`;
+    const seq = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `VP${date}${seq}`;
+  },
+  
+  // Booking ID
+  booking: () => {
+    const now = new Date();
+    const date = `${now.getFullYear().toString().slice(2)}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}`;
+    const seq = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `BK${date}${seq}`;
+  },
+  
+  // Customer ID
+  customer: () => {
+    const seq = Math.floor(Math.random() * 90000) + 10000;
+    return `C${seq}`;
+  }
+};
+
+// =============================================================
 // SEED DATA
 // =============================================================
 
-/**
- * Seed default data if database is empty
- */
 async function seedDefaultData() {
   const db = await getDB();
   
-  // Check if rooms already exist
+  // Seed rooms
   const existingRooms = await db.getAll(STORES.rooms);
   if (existingRooms.length === 0) {
     const rooms = [];
     let id = 1;
     
-    // Building A - 11 rooms
+    // Building A - 11 rooms (รายวัน)
     for (let i = 1; i <= 11; i++) {
       const floor = i <= 5 ? 1 : 2;
       rooms.push({
@@ -128,12 +187,14 @@ async function seedDefaultData() {
         building: 'A',
         floor,
         room_type: i === 3 || i === 8 ? 'Standard Twin' : 'Standard',
-        price_per_night: i === 3 || i === 8 ? 500 : 400,
+        rate_daily: i === 3 || i === 8 ? 500 : 400,
+        rate_monthly: i === 3 || i === 8 ? 8000 : 6000,
+        rental_type: 'daily', // ห้องนี้สำหรับรายวัน
         status: 'available'
       });
     }
     
-    // Building B - 11 rooms
+    // Building B - 11 rooms (รายวัน)
     for (let i = 1; i <= 11; i++) {
       const floor = i <= 5 ? 1 : 2;
       rooms.push({
@@ -142,12 +203,14 @@ async function seedDefaultData() {
         building: 'B',
         floor,
         room_type: i === 3 || i === 8 || i === 11 ? 'Standard Twin' : 'Standard',
-        price_per_night: i === 3 || i === 8 || i === 11 ? 500 : 400,
+        rate_daily: i === 3 || i === 8 || i === 11 ? 500 : 400,
+        rate_monthly: i === 3 || i === 8 || i === 11 ? 8000 : 6000,
+        rental_type: 'daily',
         status: 'available'
       });
     }
     
-    // Building N - 7 rooms
+    // Building N - 7 rooms (รายเดือน - หอพัก)
     for (let i = 1; i <= 7; i++) {
       rooms.push({
         id: id++,
@@ -155,7 +218,9 @@ async function seedDefaultData() {
         building: 'N',
         floor: 1,
         room_type: i === 2 || i === 4 || i === 7 ? 'Standard Twin' : 'Standard',
-        price_per_night: i === 2 || i === 4 || i === 7 ? 600 : 500,
+        rate_daily: i === 2 || i === 4 || i === 7 ? 600 : 500,
+        rate_monthly: i === 2 || i === 4 || i === 7 ? 5500 : 4500,
+        rental_type: 'monthly', // ห้องนี้สำหรับรายเดือน
         status: 'available'
       });
     }
@@ -189,30 +254,37 @@ async function seedDefaultData() {
     await db.put(STORES.settings, {
       key: 'app_settings',
       value: {
-        openingBalance: 4037,
-        depositAmount: 200,
+        vatRate: 7,
+        paoTaxRate: 1,
         electricRate: 8,
         waterRate: 25,
-        currency: 'THB',
-        language: 'th',
-        darkMode: false
+        depositAmount: 200,
+        currency: 'THB'
       }
     });
   }
 }
 
 // =============================================================
-// DATABASE OPERATIONS
+// DATABASE API
 // =============================================================
 
 const db = {
-  /**
-   * Room operations
-   */
+  // =============================================================
+  // ROOMS
+  // =============================================================
   rooms: {
     getAll: async () => {
       const database = await getDB();
       return database.getAll(STORES.rooms);
+    },
+    getByRentalType: async (type) => {
+      const database = await getDB();
+      return database.getAllFromIndex(STORES.rooms, 'rental_type', type);
+    },
+    getByStatus: async (status) => {
+      const database = await getDB();
+      return database.getAllFromIndex(STORES.rooms, 'status', status);
     },
     getById: async (id) => {
       const database = await getDB();
@@ -221,14 +293,6 @@ const db = {
     getByNumber: async (number) => {
       const database = await getDB();
       return database.getFromIndex(STORES.rooms, 'room_number', number);
-    },
-    getByStatus: async (status) => {
-      const database = await getDB();
-      return database.getAllFromIndex(STORES.rooms, 'status', status);
-    },
-    getByBuilding: async (building) => {
-      const database = await getDB();
-      return database.getAllFromIndex(STORES.rooms, 'building', building);
     },
     update: async (id, updates) => {
       const database = await getDB();
@@ -240,117 +304,132 @@ const db = {
     add: async (room) => {
       const database = await getDB();
       return database.add(STORES.rooms, { ...room, created_at: new Date().toISOString() });
-    },
-    delete: async (id) => {
-      const database = await getDB();
-      return database.delete(STORES.rooms, id);
-    },
-    bulkAdd: async (rooms) => {
-      const database = await getDB();
-      const tx = database.transaction(STORES.rooms, 'readwrite');
-      await Promise.all([
-        ...rooms.map(room => tx.store.put(room)),
-        tx.done
-      ]);
     }
   },
 
-  /**
-   * Customer operations
-   */
-  customers: {
+  // =============================================================
+  // DAILY GUESTS (โรงแรม)
+  // =============================================================
+  dailyGuests: {
     getAll: async () => {
       const database = await getDB();
-      return database.getAll(STORES.customers);
-    },
-    getById: async (customerId) => {
-      const database = await getDB();
-      return database.get(STORES.customers, customerId);
-    },
-    search: async (query) => {
-      const database = await getDB();
-      const all = await database.getAll(STORES.customers);
-      const q = query.toLowerCase();
-      return all.filter(c =>
-        (c.name && c.name.toLowerCase().includes(q)) ||
-        (c.customer_id && c.customer_id.toLowerCase().includes(q)) ||
-        (c.phone && c.phone.includes(q)) ||
-        (c.id_card && c.id_card.includes(q))
-      );
-    },
-    add: async (customer) => {
-      const database = await getDB();
-      return database.put(STORES.customers, customer);
-    },
-    update: async (customerId, updates) => {
-      const database = await getDB();
-      const customer = await database.get(STORES.customers, customerId);
-      if (customer) {
-        await database.put(STORES.customers, { ...customer, ...updates, updated_at: new Date().toISOString() });
-      }
-    },
-    delete: async (customerId) => {
-      const database = await getDB();
-      return database.delete(STORES.customers, customerId);
-    },
-    updateStats: async (customerId, stayInc, spentInc, date) => {
-      const database = await getDB();
-      const customer = await database.get(STORES.customers, customerId);
-      if (customer) {
-        customer.total_stays = (customer.total_stays || 0) + stayInc;
-        customer.total_spent = (customer.total_spent || 0) + spentInc;
-        customer.last_stay_date = date;
-        await database.put(STORES.customers, customer);
-      }
-    }
-  },
-
-  /**
-   * Booking operations
-   */
-  bookings: {
-    getAll: async () => {
-      const database = await getDB();
-      return database.getAll(STORES.bookings);
+      return database.getAll(STORES.daily_guests);
     },
     getActive: async () => {
       const database = await getDB();
-      return database.getAllFromIndex(STORES.bookings, 'status', 'checked_in');
+      const all = await database.getAll(STORES.daily_guests);
+      const today = new Date().toISOString().split('T')[0];
+      return all.filter(g => g.Check_In_Date <= today && g.Check_Out_Date >= today && g.Payment_Status !== 'checked_out');
     },
-    getByDate: async (date) => {
+    checkingOutToday: async () => {
       const database = await getDB();
-      const all = await database.getAll(STORES.bookings);
-      return all.filter(b => b.check_in_date === date || b.check_out_date === date);
+      const all = await database.getAll(STORES.daily_guests);
+      const today = new Date().toISOString().split('T')[0];
+      return all.filter(g => g.Check_Out_Date === today && g.Payment_Status !== 'checked_out');
     },
-    getByDateRange: async (start, end) => {
+    getById: async (rcpId) => {
       const database = await getDB();
-      const all = await database.getAll(STORES.bookings);
-      return all.filter(b => b.check_in_date >= start && b.check_in_date <= end);
+      return database.get(STORES.daily_guests, rcpId);
     },
-    getByCustomer: async (customerId) => {
+    add: async (guest) => {
       const database = await getDB();
-      return database.getAllFromIndex(STORES.bookings, 'customer_id', customerId);
+      return database.put(STORES.daily_guests, guest);
     },
-    add: async (booking) => {
+    update: async (rcpId, updates) => {
       const database = await getDB();
-      return database.put(STORES.bookings, { ...booking, created_at: new Date().toISOString() });
-    },
-    update: async (bookingId, updates) => {
-      const database = await getDB();
-      const booking = await database.get(STORES.bookings, bookingId);
-      if (booking) {
-        await database.put(STORES.bookings, { ...booking, ...updates, updated_at: new Date().toISOString() });
+      const guest = await database.get(STORES.daily_guests, rcpId);
+      if (guest) {
+        await database.put(STORES.daily_guests, { ...guest, ...updates });
       }
     },
-    delete: async (bookingId) => {
+    // ร.ร.4 Report - ผู้เข้าพักวันนี้
+    getRR4Report: async (date) => {
       const database = await getDB();
-      return database.delete(STORES.bookings, bookingId);
+      const all = await database.getAll(STORES.daily_guests);
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      return all.filter(g => g.Check_In_Date === targetDate);
     }
   },
 
-  /**
-   * Transaction operations
-   */
+  // =============================================================
+  // MONTHLY TENANTS (หอพัก)
+  // =============================================================
+  monthlyTenants: {
+    getAll: async () => {
+      const database = await getDB();
+      return database.getAll(STORES.monthly_tenants);
+    },
+    getActive: async () => {
+      const database = await getDB();
+      const all = await database.getAll(STORES.monthly_tenants);
+      const today = new Date().toISOString().split('T')[0];
+      return all.filter(t => t.Lease_Start <= today && t.Lease_End >= today && t.Payment_Status !== 'terminated');
+    },
+    getById: async (rcpId) => {
+      const database = await getDB();
+      return database.get(STORES.monthly_tenants, rcpId);
+    },
+    add: async (tenant) => {
+      const database = await getDB();
+      return database.put(STORES.monthly_tenants, tenant);
+    },
+    update: async (rcpId, updates) => {
+      const database = await getDB();
+      const tenant = await database.get(STORES.monthly_tenants, rcpId);
+      if (tenant) {
+        await database.put(STORES.monthly_tenants, { ...tenant, ...updates });
+      }
+    },
+    // ร.ร.6 Report - ภาษี อบจ. รายเดือน
+    getRR6Report: async (year, month) => {
+      const database = await getDB();
+      const all = await database.getAll(STORES.monthly_tenants);
+      const targetMonth = `${year}-${month.toString().padStart(2, '0')}`;
+      return all.filter(t => t.Lease_Start.startsWith(targetMonth));
+    }
+  },
+
+  // =============================================================
+  // MASTER DATA - Single Source of Truth
+  // =============================================================
+  masterData: {
+    getAll: async () => {
+      const database = await getDB();
+      return database.getAll(STORES.master_data);
+    },
+    getByDateRange: async (start, end) => {
+      const database = await getDB();
+      const all = await database.getAll(STORES.master_data);
+      return all.filter(r => r.Check_In_Date >= start && r.Check_In_Date <= end);
+    },
+    getByRentalType: async (type) => {
+      const database = await getDB();
+      return database.getAllFromIndex(STORES.master_data, 'Rental_Type', type);
+    },
+    getById: async (rcpId) => {
+      const database = await getDB();
+      return database.get(STORES.master_data, rcpId);
+    },
+    add: async (record) => {
+      const database = await getDB();
+      return database.put(STORES.master_data, record);
+    },
+    // Search by name or phone
+    search: async (query) => {
+      const database = await getDB();
+      const all = await database.getAll(STORES.master_data);
+      const q = query.toLowerCase();
+      return all.filter(r =>
+        (r.Customer_Name && r.Customer_Name.toLowerCase().includes(q)) ||
+        (r.Customer_Phone && r.Customer_Phone.includes(q)) ||
+        (r.Citizen_ID_Passport && r.Citizen_ID_Passport.includes(q))
+      );
+    }
+  },
+
+  // =============================================================
+  // TRANSACTIONS
+  // =============================================================
   transactions: {
     getAll: async () => {
       const database = await getDB();
@@ -360,35 +439,15 @@ const db = {
       const database = await getDB();
       return database.getAllFromIndex(STORES.transactions, 'date', date);
     },
-    getByDateRange: async (start, end) => {
-      const database = await getDB();
-      const all = await database.getAll(STORES.transactions);
-      return all.filter(t => t.date >= start && t.date <= end);
-    },
-    getByType: async (type) => {
-      const database = await getDB();
-      return database.getAllFromIndex(STORES.transactions, 'type', type);
-    },
     add: async (tx) => {
       const database = await getDB();
       return database.add(STORES.transactions, { ...tx, created_at: new Date().toISOString() });
-    },
-    update: async (txId, updates) => {
-      const database = await getDB();
-      const tx = await database.get(STORES.transactions, txId);
-      if (tx) {
-        await database.put(STORES.transactions, { ...tx, ...updates });
-      }
-    },
-    delete: async (txId) => {
-      const database = await getDB();
-      return database.delete(STORES.transactions, txId);
     }
   },
 
-  /**
-   * Settings operations
-   */
+  // =============================================================
+  // SETTINGS
+  // =============================================================
   settings: {
     get: async (key = 'app_settings') => {
       const database = await getDB();
@@ -406,17 +465,13 @@ const db = {
     }
   },
 
-  /**
-   * Employee operations
-   */
+  // =============================================================
+  // EMPLOYEES
+  // =============================================================
   employees: {
     getAll: async () => {
       const database = await getDB();
       return database.getAll(STORES.employees);
-    },
-    getById: async (id) => {
-      const database = await getDB();
-      return database.get(STORES.employees, id);
     },
     getByUsername: async (username) => {
       const database = await getDB();
@@ -425,77 +480,24 @@ const db = {
     add: async (employee) => {
       const database = await getDB();
       return database.add(STORES.employees, employee);
-    },
-    update: async (id, updates) => {
-      const database = await getDB();
-      const emp = await database.get(STORES.employees, id);
-      if (emp) {
-        await database.put(STORES.employees, { ...emp, ...updates, updated_at: new Date().toISOString() });
-      }
-    },
-    delete: async (id) => {
-      const database = await getDB();
-      return database.delete(STORES.employees, id);
     }
   },
 
-  /**
-   * Image operations
-   */
-  images: {
-    save: async (type, id, imageData) => {
-      const database = await getDB();
-      return database.put(STORES.images, { id: `${type}_${id}`, type, refId: id, data: imageData, created_at: new Date().toISOString() });
-    },
-    get: async (type, id) => {
-      const database = await getDB();
-      const img = await database.get(STORES.images, `${type}_${id}`);
-      return img?.data || null;
-    },
-    delete: async (type, id) => {
-      const database = await getDB();
-      return database.delete(STORES.images, `${type}_${id}`);
-    }
-  },
-
-  /**
-   * Sync operations
-   */
-  sync: {
-    getLastSync: async () => {
-      const database = await getDB();
-      const sync = await database.get(STORES.sync, 'last_sync');
-      return sync?.timestamp || null;
-    },
-    setLastSync: async (timestamp) => {
-      const database = await getDB();
-      await database.put(STORES.sync, { key: 'last_sync', timestamp });
-    }
-  },
-
-  /**
-   * Export all data to JSON
-   * @returns {Promise<string>}
-   */
+  // =============================================================
+  // EXPORT/IMPORT
+  // =============================================================
   export: async () => {
     const database = await getDB();
     const data = {};
     for (const store of Object.values(STORES)) {
-      if (store !== 'images') {
-        data[store] = await database.getAll(store);
-      }
+      data[store] = await database.getAll(store);
     }
     return JSON.stringify(data, null, 2);
   },
 
-  /**
-   * Import data from JSON
-   * @param {string} jsonData 
-   */
   import: async (jsonData) => {
     const database = await getDB();
     const data = JSON.parse(jsonData);
-    
     for (const [storeName, items] of Object.entries(data)) {
       if (Array.isArray(items)) {
         const tx = database.transaction(storeName, 'readwrite');
@@ -507,9 +509,6 @@ const db = {
     }
   },
 
-  /**
-   * Clear all data and reseed
-   */
   clear: async () => {
     const database = await getDB();
     for (const store of Object.values(STORES)) {
@@ -520,20 +519,16 @@ const db = {
 };
 
 // =============================================================
-// INITIALIZATION
+// INIT
 // =============================================================
 
 (async function init() {
   try {
     await seedDefaultData();
-    console.log('[DB] Database initialized successfully');
+    console.log('[DB] Hotel ERP Database initialized');
   } catch (err) {
-    console.error('[DB] Database initialization error:', err);
+    console.error('[DB] Initialization error:', err);
   }
 })();
 
-// =============================================================
-// EXPORTS
-// =============================================================
-
-export { db, STORES, getDB };
+export { db, TaxCalculator, IDGenerator, STORES, getDB };

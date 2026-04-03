@@ -4,559 +4,160 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1B4332">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="VIPAT Hotel Manager - ระบบจัดการโรงแรม รีสอร์ท">
-<title>VIPAT Hotel Manager v5</title>
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" type="image/png" href="/assets/icons/icon-192.png">
-<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
-<!-- External Libraries -->
-<script src="/assets/libs/moment.min.js"></script>
-<script src="/assets/libs/moment-th.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<title>VIPAT Hotel ERP v5.2</title>
 <style>
 :root {
-  --primary: #1B4332;
-  --primary-light: #2D6A4F;
-  --primary-dark: #081C15;
-  --primary-ultra: #D8F3DC;
-  --accent: #52B788;
-  --accent2: #F4A261;
-  --danger: #E63946;
-  --danger-light: #FFEAEC;
-  --warning: #F4A261;
-  --warning-light: #FFF3E0;
-  --info: #2176AE;
-  --info-light: #E3F2FD;
-  --success: #2D6A4F;
-  --success-light: #D8F3DC;
-  --bg: #F8FAF9;
-  --surface: #FFFFFF;
-  --surface-2: #F5F7F6;
-  --border: #E2EBE6;
-  --text: #1A2E24;
-  --text-2: #4A5D54;
-  --muted: #6B8577;
-  --shadow: 0 2px 12px rgba(27,67,50,.08);
-  --shadow-lg: 0 8px 32px rgba(27,67,50,.14);
-  --nav-height: 64px;
-  --header-height: 56px;
-  --radius: 14px;
-  --radius-sm: 8px;
+  --primary: #1B4332; --primary-light: #2D6A4F; --primary-ultra: #D8F3DC;
+  --accent: #52B788; --danger: #E63946; --danger-light: #FFEAEC;
+  --warning: #F4A261; --warning-light: #FFF3E0; --info: #2176AE; --info-light: #E3F2FD;
+  --bg: #F8FAF9; --surface: #FFFFFF; --surface-2: #F5F7F6; --border: #E2EBE6;
+  --text: #1A2E24; --muted: #6B8577;
+  --shadow: 0 2px 12px rgba(27,67,50,.08); --shadow-lg: 0 8px 32px rgba(27,67,50,.14);
+  --nav: 64px; --head: 56px; --r: 14px; --rs: 8px;
 }
-
 [data-theme="dark"] {
-  --primary: #2D6A4F;
-  --primary-light: #40916C;
-  --primary-dark: #1B4332;
-  --primary-ultra: #1B4332;
-  --bg: #0A1410;
-  --surface: #14201C;
-  --surface-2: #1A2A24;
-  --border: #2A3D34;
-  --text: #E8F5E9;
-  --text-2: #B7D4C4;
-  --muted: #8BA89A;
-  --shadow: 0 2px 12px rgba(0,0,0,.3);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,.5);
+  --primary: #2D6A4F; --primary-light: #40916C; --primary-ultra: #1B4332;
+  --bg: #0A1410; --surface: #14201C; --surface-2: #1A2A24; --border: #2A3D34;
+  --text: #E8F5E9; --muted: #8BA89A;
 }
-
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Thai', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 15px;
-  transition: background .3s, color .3s;
-}
-
-/* HEADER */
-.hdr {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: var(--header-height);
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px; z-index: 100;
-  box-shadow: 0 2px 12px rgba(0,0,0,.15);
-}
-.hdr-logo { display: flex; align-items: center; gap: 10px; }
-.hdr-icon {
-  width: 36px; height: 36px;
-  background: rgba(255,255,255,.2);
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-}
-.hdr-title { color: #fff; font-size: 16px; font-weight: 700; line-height: 1.2; }
-.hdr-sub { color: rgba(255,255,255,.7); font-size: 11px; }
-.hdr-actions { display: flex; align-items: center; gap: 8px; }
-.hdr-btn {
-  background: rgba(255,255,255,.15);
-  border: none;
-  width: 36px; height: 36px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  transition: background .2s;
-}
-.hdr-btn:active { background: rgba(255,255,255,.25); }
-.hdr-status { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,.85); font-size: 12px; font-weight: 600; }
-.pulse {
-  width: 8px; height: 8px;
-  background: #52B788;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .6; transform: scale(.85); } }
-
-/* LAYOUT */
-.body {
-  position: fixed; top: var(--header-height); left: 0; right: 0; bottom: var(--nav-height);
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
-  padding: 12px;
-}
-.sec { display: none; padding-bottom: 24px; animation: fadeUp .25s ease; }
-.sec.active { display: block; }
-@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-/* BOTTOM NAV */
-.bnav {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  height: var(--nav-height);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: repeat(8, 1fr);
-  z-index: 100;
-  padding-bottom: env(safe-area-inset-bottom);
-  box-shadow: 0 -2px 12px rgba(0,0,0,.05);
-}
-.nb {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; border: none; background: none;
-  color: var(--muted); font-size: 9px; font-weight: 600;
-  cursor: pointer; padding: 5px 2px;
-  transition: all .2s;
-}
-.nb svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; }
-.nb.active { color: var(--primary); }
-.nb:active { transform: scale(.9); }
-
-/* CARDS */
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
-  transition: all .3s;
-}
-.ctitle {
-  font-size: 12px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .5px;
-  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
-}
-
-/* STATS GRID */
-.sg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.sb {
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-  padding: 10px 6px; text-align: center;
-  border: 1px solid var(--border);
-  transition: transform .2s;
-}
-.sb:active { transform: scale(.95); }
-.sb.g { background: var(--primary-ultra); border-color: #B7E4C7; }
-.sb.y { background: #FFF3E0; border-color: #FFD699; }
-.sb.r { background: var(--danger-light); border-color: #FFCCD1; }
-.sb.b { background: var(--info-light); border-color: #BBDEFB; }
-.sn { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1; }
-.sb.g .sn { color: var(--primary); }
-.sb.y .sn { color: #BF6A00; }
-.sb.r .sn { color: var(--danger); }
-.sb.b .sn { color: var(--info); }
-.sl { font-size: 9px; color: var(--muted); margin-top: 3px; font-weight: 600; }
-
-/* FINANCE ROWS */
-.fr {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 11px 13px; border-radius: var(--radius-sm); margin-bottom: 7px;
-}
-.fr:last-child { margin-bottom: 0; }
-.fr.g { background: var(--primary-ultra); }
-.fr.r { background: var(--danger-light); }
-.fr.b { background: var(--info-light); }
-.fl { font-size: 13px; font-weight: 600; }
-.fr.g .fl, .fr.g .fa { color: var(--primary); }
-.fr.r .fl, .fr.r .fa { color: var(--danger); }
-.fr.b .fl, .fr.b .fa { color: var(--info); }
-.fa { font-size: 15px; font-weight: 800; }
-
-/* PAGE TITLE */
-.ptitle {
-  font-size: 19px; font-weight: 800; color: var(--text);
-  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
-}
-
-/* FORMS */
-.field { margin-bottom: 12px; }
-.field label {
-  display: block; font-size: 11px; font-weight: 700; color: var(--muted);
-  margin-bottom: 5px; text-transform: uppercase; letter-spacing: .3px;
-}
-.inp {
-  width: 100%; padding: 12px 13px;
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 15px; font-family: inherit; color: var(--text);
-  background: var(--surface); transition: all .2s;
-  -webkit-appearance: none;
-}
-.inp:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(82,183,136,.1); }
-.inp:read-only { background: var(--surface-2); color: var(--muted); }
-.inrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sel {
-  width: 100%; padding: 12px 13px;
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 15px; font-family: inherit; color: var(--text);
-  background: var(--surface);
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B8577' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 13px center;
-}
-.sel:focus { outline: none; border-color: var(--accent); }
-.ta {
-  width: 100%; padding: 12px 13px;
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  font-size: 15px; font-family: inherit; color: var(--text);
-  background: var(--surface); resize: none; transition: all .2s;
-}
-.ta:focus { outline: none; border-color: var(--accent); }
-
-/* BUTTONS */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 13px 18px; border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 700; border: none; cursor: pointer;
-  transition: all .15s; font-family: inherit; width: 100%;
-}
-.bp { background: var(--primary); color: #fff; }
-.bp:active { background: var(--primary-light); transform: scale(.98); }
-.bs { background: var(--surface-2); color: var(--text); border: 1.5px solid var(--border); }
-.bs:active { background: var(--border); }
-.bd { background: var(--danger-light); color: var(--danger); border: 1.5px solid #FFCCD1; }
-.brow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
-.bsm { padding: 9px 14px; font-size: 12px; }
-.bico {
-  background: var(--primary); color: #fff; border: none;
-  border-radius: var(--radius-sm); padding: 12px 14px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  white-space: nowrap; display: flex; align-items: center; gap: 4px;
-}
-.bicos {
-  background: var(--surface-2); color: var(--text);
-  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-  padding: 12px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
-}
-.lbtn { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; padding: 4px 0; }
-
-/* TOTAL BOX */
-.tbox {
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  color: #fff; border-radius: var(--radius); padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow-lg);
-}
-.tbox-lbl { font-size: 11px; opacity: .8; margin-bottom: 3px; }
-.tbox-amt { font-size: 30px; font-weight: 900; letter-spacing: -.5px; }
-.tbox-bd {
-  margin-top: 10px; border-top: 1px solid rgba(255,255,255,.15);
-  padding-top: 9px; display: flex; flex-direction: column; gap: 4px;
-}
-.bdr { display: flex; justify-content: space-between; font-size: 11px; opacity: .8; }
-
-/* CUSTOMER SELECT */
-.csel {
-  background: var(--primary-ultra);
-  border: 1.5px solid #B7E4C7; border-radius: var(--radius-sm);
-  padding: 11px 13px; display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 12px;
-}
-.csel.hidden { display: none; }
-.cn { font-weight: 700; font-size: 14px; color: var(--primary); }
-.cs { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.ccl { background: none; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 3px 7px; line-height: 1; }
-
-/* ROOMS GRID */
-.fbar {
-  display: flex; gap: 7px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px;
-  scrollbar-width: none;
-}
-.fbar::-webkit-scrollbar { display: none; }
-.fc {
-  flex-shrink: 0; padding: 7px 14px; border-radius: 20px;
-  font-size: 12px; font-weight: 600; border: 1.5px solid var(--border);
-  background: var(--surface); color: var(--muted); cursor: pointer;
-  transition: all .2s;
-}
-.fc:active { transform: scale(.95); }
-.fc.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-.rg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.rc {
-  background: var(--surface); border-radius: var(--radius-sm); padding: 12px;
-  border: 2px solid var(--border); cursor: pointer; transition: all .15s;
-}
-.rc:active { transform: scale(.97); }
-.rc.available { border-color: #B7E4C7; background: #F0FBF4; }
-.rc.occupied { border-color: #FFD699; background: #FFFBF0; }
-.rc.maintenance { border-color: #FFCCD1; background: #FFF5F5; }
-.rc.cleaning { border-color: #BBDEFB; background: #F0F8FF; }
-.rn { font-size: 16px; font-weight: 800; color: var(--text); }
-.rt { font-size: 10px; color: var(--muted); margin: 1px 0; }
-.rp { font-size: 12px; font-weight: 700; color: var(--primary); }
-.rbadge {
-  display: inline-block; font-size: 9px; font-weight: 700;
-  padding: 2px 7px; border-radius: 10px; margin-top: 5px;
-}
-.available .rbadge { background: #B7E4C7; color: var(--primary); }
-.occupied .rbadge { background: #FFD699; color: #7A4A00; }
-.maintenance .rbadge { background: #FFCCD1; color: var(--danger); }
-.cleaning .rbadge { background: #BBDEFB; color: #0D47A1; }
-
-/* TOAST */
-.toast {
-  position: fixed; bottom: calc(var(--nav-height) + 12px); left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  background: var(--primary); color: #fff;
-  padding: 11px 20px; border-radius: 24px;
-  font-size: 13px; font-weight: 600;
-  opacity: 0; transition: all .3s; z-index: 999;
-  white-space: nowrap; pointer-events: none;
-  box-shadow: var(--shadow-lg);
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast.err { background: var(--danger); }
-
-/* MODAL */
-.overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.6); z-index: 200;
-  align-items: flex-end; justify-content: center;
-  backdrop-filter: blur(2px);
-}
-.overlay.show { display: flex; }
-.sheet {
-  background: var(--surface); border-radius: 20px 20px 0 0;
-  width: 100%; max-height: 85vh; overflow-y: auto;
-  padding: 20px; animation: slideUp .25s ease;
-}
-@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-.sheet-handle {
-  width: 40px; height: 4px; background: var(--border);
-  border-radius: 2px; margin: 0 auto 16px;
-}
-
-/* QUICK ACTIONS */
-.qbar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.qb {
-  background: var(--surface-2); border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm); padding: 12px 6px;
-  text-align: center; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  transition: all .15s;
-}
-.qb:active { background: var(--primary-ultra); border-color: var(--accent); transform: scale(.97); }
-.qbi { font-size: 20px; }
-.qb span:last-child { font-size: 11px; font-weight: 600; color: var(--text); }
-
-/* OCR */
-.ocr-box {
-  background: var(--surface-2); border: 2px dashed var(--border);
-  border-radius: var(--radius); padding: 14px; text-align: center;
-  transition: all .2s;
-}
-.ocr-box.scanning { border-color: var(--accent); background: var(--primary-ultra); }
-.ocr-status { margin-top: 8px; font-size: 12px; font-weight: 600; }
-.ocr-status.ok { color: var(--primary); }
-.ocr-status.err { color: var(--danger); }
-.ocr-status.wait { color: var(--warning); }
-.ocr-btn {
-  background: var(--primary); color: #fff; border: none;
-  border-radius: var(--radius-sm); padding: 10px 18px;
-  font-size: 13px; font-weight: 700; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 6px;
-}
-
-/* EMPTY STATE */
-.empty {
-  text-align: center; padding: 24px 0;
-  color: var(--muted); font-size: 13px;
-}
-
-/* CHECKOUT ITEM */
-.coi {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 11px; background: var(--warning-light);
-  border: 1px solid #FFD699; border-radius: var(--radius-sm);
-  margin-bottom: 6px;
-}
-.con { font-weight: 700; font-size: 13px; }
-.cor { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.cobtn {
-  background: var(--warning); color: #fff; border: none;
-  border-radius: 6px; padding: 7px 12px;
-  font-size: 11px; font-weight: 700; cursor: pointer;
-}
-
-/* ACCOUNTING */
-.acs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 11px; }
-.ab {
-  background: var(--surface); border-radius: var(--radius-sm);
-  padding: 11px; text-align: center; border: 1.5px solid var(--border);
-}
-.ab.g { border-color: #B7E4C7; background: #F0FBF4; }
-.ab.r { border-color: #FFCCD1; background: var(--danger-light); }
-.ab.b { border-color: #BBDEFB; background: var(--info-light); }
-.abl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 3px; }
-.ab.g .abl { color: var(--primary); }
-.ab.r .abl { color: var(--danger); }
-.ab.b .abl { color: var(--info); }
-.aba { font-size: 15px; font-weight: 800; }
-.ab.g .aba { color: var(--primary); }
-.ab.r .aba { color: var(--danger); }
-.ab.b .aba { color: var(--info); }
-
-/* PAYMENT OPTIONS */
-.pm { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
-.po {
-  background: var(--surface-2); border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm); padding: 11px 7px; text-align: center;
-  cursor: pointer; transition: all .15s;
-}
-.po input { display: none; }
-.pol { font-size: 12px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.poi { font-size: 18px; }
-.po.checked { background: var(--primary-ultra); border-color: var(--accent); }
-.po.checked .pol { color: var(--primary); }
-
-/* CUSTOMER LIST */
-.cc {
-  background: var(--surface); border-radius: var(--radius-sm);
-  padding: 13px; border: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 7px; box-shadow: var(--shadow);
-  transition: transform .2s;
-}
-.cc:active { transform: scale(.98); }
-.ccn { font-weight: 700; font-size: 14px; }
-.ccm { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.ccb { text-align: right; }
-.ccs { font-size: 19px; font-weight: 800; color: var(--primary); }
-.ccsl { font-size: 9px; color: var(--muted); }
-
-/* SEARCH RESULT */
-.sres { margin-top: 7px; display: flex; flex-direction: column; gap: 5px; }
-.sri {
-  padding: 11px 13px; background: var(--surface-2);
-  border-radius: var(--radius-sm); border: 1.5px solid var(--border);
-  cursor: pointer; transition: all .15s;
-}
-.sri:active { background: var(--primary-ultra); border-color: var(--accent); }
-.srn { font-weight: 600; font-size: 13px; }
-.srs { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.ribox {
-  background: var(--surface-2); border-radius: var(--radius-sm);
-  padding: 9px 11px; margin-top: 7px; font-size: 12px;
-  color: var(--muted); border: 1px solid var(--border);
-}
-
-/* HISTORY */
-.hist-box {
-  background: var(--info-light); border: 1.5px solid #BBDEFB;
-  border-radius: var(--radius-sm); padding: 12px;
-  margin-bottom: 12px; display: none;
-}
-.hist-box.show { display: block; }
-.hist-title { font-size: 12px; font-weight: 700; color: var(--info); margin-bottom: 6px; }
-.hist-row { font-size: 12px; color: var(--text); display: flex; gap: 6px; margin-bottom: 3px; }
-.hist-btn {
-  background: var(--info); color: #fff; border: none;
-  border-radius: 6px; padding: 6px 12px;
-  font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 6px;
-}
-
-/* TRANSACTION */
-.txi {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  padding: 11px; background: var(--surface-2);
-  border-radius: var(--radius-sm); margin-bottom: 5px;
-  border: 1px solid var(--border);
-}
-.txn { font-weight: 600; font-size: 12px; }
-.txm { font-size: 10px; color: var(--muted); margin-top: 2px; }
-.txp { font-weight: 800; color: var(--primary); font-size: 13px; }
-.txng { font-weight: 800; color: var(--danger); font-size: 13px; }
-.txb { font-size: 9px; color: var(--muted); margin-top: 2px; text-align: right; }
-
-/* BADGE */
-.badge {
-  display: inline-block; padding: 3px 10px;
-  border-radius: 10px; font-size: 11px; font-weight: 700;
-}
-.badge.in { background: var(--primary-ultra); color: var(--primary); }
-.badge.out { background: var(--danger-light); color: var(--danger); }
-.badge.pending { background: var(--warning-light); color: #BF6A00; }
-
-/* CHART CONTAINER */
-.chart-container {
-  position: relative; height: 200px;
-  margin-top: 12px;
-}
-
-/* LOADING */
-.loading {
-  display: flex; align-items: center; justify-content: center;
-  padding: 40px;
-}
-.spinner {
-  width: 32px; height: 32px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* SCROLLBAR */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans Thai',sans-serif;background:var(--bg);color:var(--text);font-size:15px;transition:background .3s,color .3s;}
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--head);background:linear-gradient(135deg,var(--primary),var(--primary-light));display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15);}
+.hdr-logo{display:flex;align-items:center;gap:10px;}
+.hdr-icon{width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.hdr-title{color:#fff;font-size:16px;font-weight:700;line-height:1.2;}
+.hdr-sub{color:rgba(255,255,255,.7);font-size:11px;}
+.hdr-actions{display:flex;align-items:center;gap:8px;}
+.hdr-btn{background:rgba(255,255,255,.15);border:none;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;}
+.hdr-status{display:flex;align-items:center;gap:6px;color:rgba(255,255,255,.85);font-size:12px;font-weight:600;}
+.body{position:fixed;top:var(--head);left:0;right:0;bottom:var(--nav);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;}
+.sec{display:none;padding-bottom:24px;animation:fadeUp .25s ease;}
+.sec.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(6,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom);}
+.nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--muted);font-size:9px;font-weight:600;cursor:pointer;padding:5px 2px;}
+.nb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.nb.active{color:var(--primary);}
+.card{background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--shadow);border:1px solid var(--border);}
+.ctitle{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.sb{background:var(--surface-2);border-radius:var(--rs);padding:10px 6px;text-align:center;border:1px solid var(--border);}
+.sb.g{background:var(--primary-ultra);border-color:#B7E4C7;}
+.sb.y{background:#FFF3E0;border-color:#FFD699;}
+.sb.r{background:var(--danger-light);border-color:#FFCCD1;}
+.sb.b{background:var(--info-light);border-color:#BBDEFB;}
+.sn{font-size:20px;font-weight:800;color:var(--text);line-height:1;}
+.sb.g .sn{color:var(--primary);}
+.sb.y .sn{color:#BF6A00;}
+.sb.r .sn{color:var(--danger);}
+.sb.b .sn{color:var(--info);}
+.sl{font-size:9px;color:var(--muted);margin-top:3px;font-weight:600;}
+.fr{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border-radius:var(--rs);margin-bottom:7px;}
+.fr:last-child{margin-bottom:0;}
+.fr.g{background:var(--primary-ultra);}
+.fr.r{background:var(--danger-light);}
+.fr.b{background:var(--info-light);}
+.fl{font-size:13px;font-weight:600;}
+.fr.g .fl,.fr.g .fa{color:var(--primary);}
+.fr.r .fl,.fr.r .fa{color:var(--danger);}
+.fr.b .fl,.fr.b .fa{color:var(--info);}
+.fa{font-size:15px;font-weight:800;}
+.ptitle{font-size:19px;font-weight:800;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+.inp{width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;font-family:inherit;color:var(--text);background:var(--surface);transition:all .2s;-webkit-appearance:none;}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(82,183,136,.1);}
+.inp:read-only{background:var(--surface-2);color:var(--muted);}
+.inrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sel{width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:15px;font-family:inherit;color:var(--text);background:var(--surface);-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B8577' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;}
+.sel:focus{outline:none;border-color:var(--accent);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:13px 18px;border-radius:var(--rs);font-size:14px;font-weight:700;border:none;cursor:pointer;transition:all .15s;font-family:inherit;width:100%;}
+.bp{background:var(--primary);color:#fff;}
+.bp:active{background:var(--primary-light);transform:scale(.98);}
+.bs{background:var(--surface-2);color:var(--text);border:1.5px solid var(--border);}
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.bico{background:var(--primary);color:#fff;border:none;border-radius:var(--rs);padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;}
+.tbox{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--shadow-lg);}
+.tbox-lbl{font-size:11px;opacity:.8;margin-bottom:3px;}
+.tbox-amt{font-size:30px;font-weight:900;letter-spacing:-.5px;}
+.csel{background:var(--primary-ultra);border:1.5px solid #B7E4C7;border-radius:var(--rs);padding:11px 13px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.csel.hidden{display:none;}
+.cn{font-weight:700;font-size:14px;color:var(--primary);}
+.cs{font-size:11px;color:var(--muted);margin-top:2px;}
+.ccl{background:none;border:none;color:var(--danger);font-size:20px;cursor:pointer;padding:3px 7px;line-height:1;}
+.sres{margin-top:7px;display:flex;flex-direction:column;gap:5px;}
+.sri{padding:11px 13px;background:var(--surface-2);border-radius:var(--rs);border:1.5px solid var(--border);cursor:pointer;}
+.sri:active{background:var(--primary-ultra);border-color:var(--accent);}
+.srn{font-weight:600;font-size:13px;}
+.srs{font-size:11px;color:var(--muted);margin-top:2px;}
+.qbar{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.qb{background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--rs);padding:16px 6px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .15s;}
+.qb:active{background:var(--primary-ultra);border-color:var(--accent);transform:scale(.97);}
+.qbi{font-size:24px;}
+.qb span:last-child{font-size:12px;font-weight:700;color:var(--text);}
+.cc{background:var(--surface);border-radius:var(--rs);padding:13px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;box-shadow:var(--shadow);}
+.ccn{font-weight:700;font-size:14px;}
+.ccm{font-size:11px;color:var(--muted);margin-top:2px;}
+.ccb{text-align:right;}
+.ccs{font-size:19px;font-weight:800;color:var(--primary);}
+.ccsl{font-size:9px;color:var(--muted);}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(2px);}
+.overlay.show{display:flex;}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:20px;animation:slideUp .25s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.sheet-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+.sheet-title{font-size:18px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.sheet-close{background:var(--surface-2);border:none;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.pm{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
+.po{background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--rs);padding:11px 7px;text-align:center;cursor:pointer;transition:all .15s;}
+.po input{display:none;}
+.pol{font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;}
+.poi{font-size:18px;}
+.po.checked{background:var(--primary-ultra);border-color:var(--accent);}
+.po.checked .pol{color:var(--primary);}
+.toast{position:fixed;bottom:calc(var(--nav) + 12px);left:50%;transform:translateX(-50%) translateY(10px);background:var(--primary);color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;font-weight:600;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-lg);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.err{background:var(--danger);}
+.empty{text-align:center;padding:24px 0;color:var(--muted);font-size:13px;}
+.coi{display:flex;justify-content:space-between;align-items:center;padding:11px;background:var(--warning-light);border:1px solid #FFD699;border-radius:var(--rs);margin-bottom:6px;}
+.con{font-weight:700;font-size:13px;}
+.cor{font-size:11px;color:var(--muted);margin-top:2px;}
+.cobtn{background:var(--warning);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;}
+.txi{display:flex;justify-content:space-between;align-items:flex-start;padding:11px;background:var(--surface-2);border-radius:var(--rs);margin-bottom:5px;border:1px solid var(--border);}
+.txn{font-weight:600;font-size:12px;}
+.txm{font-size:10px;color:var(--muted);margin-top:2px;}
+.txp{font-weight:800;color:var(--primary);font-size:13px;}
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.rc{background:var(--surface);border-radius:var(--rs);padding:12px;border:2px solid var(--border);cursor:pointer;}
+.rc.available{border-color:#B7E4C7;background:#F0FBF4;}
+.rc.occupied{border-color:#FFD699;background:#FFFBF0;}
+.rn{font-size:16px;font-weight:800;color:var(--text);}
+.rt{font-size:10px;color:var(--muted);margin:1px 0;}
+.rp{font-size:12px;font-weight:700;color:var(--primary);}
+.rbadge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-top:5px;}
+.available .rbadge{background:#B7E4C7;color:var(--primary);}
+.occupied .rbadge{background:#FFD699;color:#7A4A00;}
+.rg-name{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;margin-top:10px;}
+.ocr-box{background:var(--surface-2);border:2px dashed var(--border);border-radius:var(--r);padding:14px;text-align:center;margin-bottom:12px;}
+.ocr-box.scanning{border-color:var(--accent);background:var(--primary-ultra);}
+.ocr-status{margin-top:8px;font-size:12px;font-weight:600;}
+.ocr-status.ok{color:var(--primary);}
+.ocr-status.err{color:var(--danger);}
+.ocr-status.wait{color:var(--warning);}
+.ocr-btn{background:var(--primary);color:#fff;border:none;border-radius:var(--rs);padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="hdr">
   <div class="hdr-logo">
     <div class="hdr-icon">🏨</div>
-    <div>
-      <div class="hdr-title">VIPAT Hotel</div>
-      <div class="hdr-sub">v5.1</div>
-    </div>
+    <div><div class="hdr-title">VIPAT Hotel ERP</div><div class="hdr-sub">v5.2</div></div>
   </div>
   <div class="hdr-actions">
-    <button class="hdr-btn" onclick="toggleTheme()" title="ธีม">🌓</button>
-    <button class="hdr-btn" onclick="checkNetwork()" title="เครือข่าย">📶</button>
-    <div class="hdr-status" id="hdr-user" style="display:none">
-      <span id="user-name"></span>
-    </div>
+    <button class="hdr-btn" onclick="toggleTheme()">🌓</button>
+    <div class="hdr-status" id="hdr-user" style="display:none"><span id="user-name"></span></div>
   </div>
 </header>
 
@@ -564,16 +165,14 @@ body {
 <section id="login" class="sec">
   <div style="text-align:center;padding:60px 20px">
     <div style="font-size:64px;margin-bottom:20px">🏨</div>
-    <div style="font-size:26px;font-weight:800;margin-bottom:8px;color:var(--primary)">VIPAT Hotel</div>
-    <div style="color:var(--muted);margin-bottom:40px;font-size:14px">ระบบจัดการโรงแรม v5.1</div>
-    <input type="text" id="login-user" class="inp" placeholder="ชื่อผู้ใช้" style="margin-bottom:12px" autocomplete="username">
-    <input type="password" id="login-pass" class="inp" placeholder="รหัสผ่าน" style="margin-bottom:20px" autocomplete="current-password">
+    <div style="font-size:26px;font-weight:800;margin-bottom:8px;color:var(--primary)">VIPAT Hotel ERP</div>
+    <div style="color:var(--muted);margin-bottom:40px;font-size:14px">ระบบจัดการโรงแรม v5.2 - แยก รายวัน/รายเดือน</div>
+    <input type="text" id="login-user" class="inp" placeholder="ชื่อผู้ใช้" style="margin-bottom:12px">
+    <input type="password" id="login-pass" class="inp" placeholder="รหัสผ่าน" style="margin-bottom:20px">
     <button onclick="login()" class="btn bp" style="width:100%">เข้าสู่ระบบ</button>
-    <div style="margin-top:24px;font-size:12px;color:var(--muted);padding:12px;background:var(--surface-2);border-radius:var(--radius-sm)">
+    <div style="margin-top:24px;font-size:12px;color:var(--muted);padding:12px;background:var(--surface-2);border-radius:var(--rs)">
       <strong>บัญชีทดสอบ:</strong><br>
-      👤 admin / admin123 (ผู้ดูแล)<br>
-      👤 manager / manager123 (ผู้จัดการ)<br>
-      👤 staff / staff123 (พนักงาน)
+      👤 admin / admin123 | manager / manager123 | staff / staff123
     </div>
   </div>
 </section>
@@ -586,37 +185,37 @@ body {
     
     <!-- Quick Actions -->
     <div class="card">
-      <div class="ctitle">⚡ ด่วน</div>
+      <div class="ctitle">⚡ เมนูหลัก</div>
       <div class="qbar">
-        <button class="qb" onclick="openQuickCheckin()">
-          <span class="qbi">📝</span><span>เช็คอิน</span>
+        <button class="qb" onclick="openDailyCheckin()">
+          <span class="qbi">📅</span><span>เช็คอินรายวัน</span>
         </button>
-        <button class="qb" onclick="openQuickGuest()">
-          <span class="qbi">👤</span><span>ผู้พัก</span>
+        <button class="qb" onclick="openMonthlyCheckin()">
+          <span class="qbi">🗓️</span><span>เช่ารายเดือน</span>
         </button>
-        <button class="qb" onclick="openQuickIncome()">
-          <span class="qbi">💵</span><span>รายรับ</span>
+        <button class="qb" onclick="goSec('daily')">
+          <span class="qbi">🏨</span><span>ผู้เข้าพัก</span>
         </button>
-        <button class="qb" onclick="openQuickExpense()">
-          <span class="qbi">💸</span><span>รายจ่าย</span>
+        <button class="qb" onclick="goSec('monthly')">
+          <span class="qbi">🏠</span><span>ผู้เช่า</span>
         </button>
         <button class="qb" onclick="goSec('rooms')">
-          <span class="qbi">🏠</span><span>ห้อง</span>
+          <span class="qbi">🏢</span><span>ห้องพัก</span>
         </button>
-        <button class="qb" onclick="document.getElementById('ocr-input').click()">
-          <span class="qbi">📷</span><span>สแกน</span>
+        <button class="qb" onclick="goSec('reports')">
+          <span class="qbi">📄</span><span>รายงาน</span>
         </button>
       </div>
     </div>
 
     <!-- Room Stats -->
     <div class="card">
-      <div class="ctitle">🏠 ห้องพัก</div>
+      <div class="ctitle">🏢 ห้องพัก</div>
       <div class="sg">
         <div class="sb"><div class="sn" id="dash-total">-</div><div class="sl">ทั้งหมด</div></div>
         <div class="sb g"><div class="sn" id="dash-avail">-</div><div class="sl">ว่าง</div></div>
-        <div class="sb y"><div class="sn" id="dash-occ">-</div><div class="sl">มีผู้พัก</div></div>
-        <div class="sb r"><div class="sn" id="dash-maint">-</div><div class="sl">ซ่อม</div></div>
+        <div class="sb y"><div class="sn" id="dash-daily">-</div><div class="sl">รายวัน</div></div>
+        <div class="sb b"><div class="sn" id="dash-monthly">-</div><div class="sl">รายเดือน</div></div>
       </div>
     </div>
 
@@ -628,112 +227,41 @@ body {
       <div class="fr b"><span class="fl">คงเหลือ</span><span class="fa" id="dash-balance">฿0</span></div>
     </div>
 
-    <!-- Activity -->
-    <div class="card">
-      <div class="ctitle">📅 กิจกรรม</div>
-      <div class="sg" style="grid-template-columns:repeat(3,1fr)">
-        <div class="sb b"><div class="sn" id="dash-ci">-</div><div class="sl">เช็คอิน</div></div>
-        <div class="sb r"><div class="sn" id="dash-co">-</div><div class="sl">เช็คเอาท์</div></div>
-        <div class="sb g"><div class="sn" id="dash-act">-</div><div class="sl">พักอยู่</div></div>
-      </div>
-    </div>
-
     <!-- Checkout Today -->
     <div class="card">
       <div class="ctitle">⚠️ เช็คเอาท์วันนี้</div>
       <div id="dash-colist"><div class="empty">ไม่มีรายการ</div></div>
     </div>
+  </section>
 
-    <!-- Revenue Chart -->
-    <div class="card">
-      <div class="ctitle">📈 รายได้ 7 วัน</div>
-      <div class="chart-container">
-        <canvas id="revenueChart"></canvas>
-      </div>
-    </div>
+  <!-- DAILY GUESTS LIST -->
+  <section id="daily" class="sec">
+    <div class="ptitle">🏨 ผู้เข้าพัก (รายวัน)</div>
+    <div id="daily-list"></div>
+  </section>
+
+  <!-- MONTHLY TENANTS LIST -->
+  <section id="monthly" class="sec">
+    <div class="ptitle">🏠 ผู้เช่า (รายเดือน)</div>
+    <div id="monthly-list"></div>
   </section>
 
   <!-- ROOMS -->
   <section id="rooms" class="sec">
-    <div class="sechdr">
-      <div class="ptitle" style="margin-bottom:0">🏠 ห้องพัก</div>
-      <button class="lbtn" onclick="openRoomFilter()">🔍 กรอง</button>
-    </div>
-    
-    <div class="fbar" id="room-filter">
-      <button class="fc active" onclick="filterRoom('all',this)">ทั้งหมด</button>
-      <button class="fc" onclick="filterRoom('available',this)">ว่าง</button>
-      <button class="fc" onclick="filterRoom('occupied',this)">มีผู้พัก</button>
-      <button class="fc" onclick="filterRoom('maintenance',this)">ซ่อม</button>
-      <button class="fc" onclick="filterRoom('cleaning',this)">ทำความสะอาด</button>
-    </div>
-
+    <div class="ptitle">🏢 ห้องพัก</div>
     <div class="rg" id="rooms-grid"></div>
   </section>
 
-  <!-- CUSTOMERS -->
-  <section id="customers" class="sec">
-    <div class="ptitle">👥 ลูกค้า</div>
-    <div class="card">
-      <input type="text" id="cust-search" class="inp" placeholder="🔍 ค้นหา ชื่อ, เบอร์, รหัส, เลขบัตร" oninput="loadCusts(this.value)">
-    </div>
-    <div id="cust-list"></div>
-  </section>
-
-  <!-- ACCOUNTING -->
-  <section id="accounting" class="sec">
-    <div class="ptitle">💰 บัญชี</div>
+  <!-- REPORTS -->
+  <section id="reports" class="sec">
+    <div class="ptitle">📄 รายงาน</div>
     
     <div class="card">
-      <div class="acs">
-        <div class="ab g"><div class="abl">รายรับ</div><div class="aba" id="acc-income">฿0</div></div>
-        <div class="ab r"><div class="abl">รายจ่าย</div><div class="aba" id="acc-expense">฿0</div></div>
-        <div class="ab b"><div class="abl">คงเหลือ</div><div class="aba" id="acc-balance">฿0</div></div>
-      </div>
+      <div class="ctitle">📋 ร.ร.4 - ผู้เข้าพักวันนี้</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">รายงานกรมการปกครอง</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">จำนวน: <span id="rr4-count">0</span> คน</div>
+      <div id="rr4-list"></div>
     </div>
-
-    <div class="card">
-      <div class="inrow">
-        <input type="date" id="acc-start" class="inp" onchange="loadAcc()">
-        <input type="date" id="acc-end" class="inp" onchange="loadAcc()">
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="ctitle">📊 สรุป</div>
-      <div class="chart-container">
-        <canvas id="financeChart"></canvas>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="ctitle">📝 รายการ</div>
-      <div id="tx-list"></div>
-    </div>
-  </section>
-
-  <!-- EMPLOYEES -->
-  <section id="employees" class="sec">
-    <div class="ptitle">👨‍💼 พนักงาน</div>
-    
-    <div class="card">
-      <div class="field"><label>ชื่อผู้ใช้</label><input type="text" id="emp-username" class="inp"></div>
-      <div class="field"><label>ชื่อ</label><input type="text" id="emp-name" class="inp"></div>
-      <div class="inrow">
-        <div class="field" style="margin-bottom:0"><label>รหัสผ่าน</label><input type="password" id="emp-password" class="inp"></div>
-        <div class="field" style="margin-bottom:0"><label>เบอร์</label><input type="tel" id="emp-phone" class="inp"></div>
-      </div>
-      <div class="field"><label>ตำแหน่ง</label>
-        <select id="emp-role" class="sel">
-          <option value="staff">พนักงาน</option>
-          <option value="manager">ผู้จัดการ</option>
-          <option value="admin">ผู้ดูแล</option>
-        </select>
-      </div>
-      <button onclick="addEmployee()" class="btn bp">➕ เพิ่มพนักงาน</button>
-    </div>
-
-    <div id="emp-list"></div>
   </section>
 
   <!-- SETTINGS -->
@@ -741,39 +269,11 @@ body {
     <div class="ptitle">⚙️ ตั้งค่า</div>
     
     <div class="card">
-      <div class="ctitle">💰 การเงิน</div>
-      <div class="field"><label>ยอดเปิดบัญชี</label><input type="number" id="set-open" class="inp"></div>
-      <div class="field"><label>เงินมัดจำ</label><input type="number" id="set-dep" class="inp"></div>
+      <div class="ctitle">💰 อัตราค่าสาธารณูปโภค</div>
       <div class="inrow">
         <div class="field" style="margin-bottom:0"><label>ค่าไฟ/หน่วย</label><input type="number" id="set-elec" class="inp"></div>
         <div class="field" style="margin-bottom:0"><label>ค่าน้ำ/หน่วย</label><input type="number" id="set-water" class="inp"></div>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="ctitle">🏠 จำนวนห้อง</div>
-      <div class="inrow">
-        <div class="field" style="margin-bottom:0"><label>ตึก A</label><input type="number" id="set-count-a" class="inp"></div>
-        <div class="field" style="margin-bottom:0"><label>ตึก B</label><input type="number" id="set-count-b" class="inp"></div>
-      </div>
-      <div class="field"><label>ตึก N</label><input type="number" id="set-count-n" class="inp"></div>
-      <button onclick="regenRooms()" class="btn bs">🔄 สร้างห้องใหม่</button>
-    </div>
-
-    <div class="card">
-      <div class="ctitle">☁️ API & Sync</div>
-      <div class="field"><label>API URL</label><input type="url" id="set-api-url" class="inp" placeholder="https://api.example.com"></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted)">
-        <input type="checkbox" id="set-sync-enabled"> Sync อัตโนมัติ
-      </label>
-    </div>
-
-    <div class="card">
-      <div class="ctitle">💾 ข้อมูล</div>
-      <button onclick="exportData()" class="btn bs" style="margin-bottom:8px">📥 สำรองข้อมูล (JSON)</button>
-      <button onclick="document.getElementById('import-input').click()" class="btn bs" style="margin-bottom:8px">📤 กู้ข้อมูล</button>
-      <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(this)">
-      <button onclick="clearAllData()" class="btn bd">⚠️ ล้างข้อมูลทั้งหมด</button>
     </div>
 
     <button onclick="saveSettings()" class="btn bp">💾 บันทึก</button>
@@ -784,170 +284,117 @@ body {
 <!-- BOTTOM NAV -->
 <nav class="bnav">
   <button class="nb" data-s="dashboard" onclick="goSec('dashboard')"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>หลัก</span></button>
+  <button class="nb" data-s="daily" onclick="goSec('daily')"><svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><span>รายวัน</span></button>
+  <button class="nb" data-s="monthly" onclick="goSec('monthly')"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>รายเดือน</span></button>
   <button class="nb" data-s="rooms" onclick="goSec('rooms')"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>ห้อง</span></button>
-  <button class="nb" data-s="customers" onclick="goSec('customers')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>ลูกค้า</span></button>
-  <button class="nb" data-s="accounting" onclick="goSec('accounting')"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>บัญชี</span></button>
-  <button class="nb" data-s="employees" onclick="goSec('employees')"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>พนักงาน</span></button>
-  <button class="nb" data-s="reports" onclick="goSec('reports')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span>รายงาน</span></button>
+  <button class="nb" data-s="reports" onclick="goSec('reports')"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>รายงาน</span></button>
   <button class="nb" data-s="settings" onclick="goSec('settings')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>ตั้งค่า</span></button>
 </nav>
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
 
-<!-- ROOM DETAIL MODAL -->
-<div class="overlay" id="room-overlay" onclick="closeRoomModal(event)">
+<!-- DAILY CHECKIN MODAL -->
+<div class="overlay" id="daily-checkin-popup" onclick="closeQuickPopup(event,'daily-checkin-popup')">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">
-      <span id="room-detail-title">ห้อง</span>
-      <button class="sheet-close" onclick="closeRoomModal()">✕</button>
-    </div>
-    <div id="room-detail-content"></div>
-  </div>
-</div>
-
-<!-- QUICK CHECKIN MODAL -->
-<div class="overlay" id="quick-checkin-popup" onclick="closeQuickPopup(event,'quick-checkin-popup')">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title"><span>📝 เช็คอิน</span><button class="sheet-close" onclick="closeQuickPopup()">✕</button></div>
+    <div class="sheet-title"><span>📅 เช็คอินรายวัน (โรงแรม)</span><button class="sheet-close" onclick="closeQuickPopup()">✕</button></div>
 
     <!-- OCR -->
-    <div class="ocr-box" id="ocr-box" style="margin-bottom:12px">
+    <div class="ocr-box" id="daily-ocr-box">
       <div style="font-size:24px;margin-bottom:4px">🪪</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px">สแกนบัตรประชาชน</div>
-      <input type="file" id="ocr-input" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleOCR(this)">
-      <button class="ocr-btn" onclick="document.getElementById('ocr-input').click()" style="font-size:11px;padding:8px 12px">📷 สแกน</button>
-      <div id="ocr-status" class="ocr-status" style="display:none"></div>
+      <input type="file" id="daily-ocr-input" accept="image/*" capture="environment" style="display:none">
+      <button class="ocr-btn" onclick="document.getElementById('daily-ocr-input').click()" style="font-size:11px;padding:8px 12px">📷 สแกน</button>
+      <div id="daily-ocr-status" class="ocr-status" style="display:none"></div>
     </div>
 
     <!-- Customer Search -->
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input type="text" id="csearch" class="inp" style="flex:1;font-size:13px;padding:10px" placeholder="🔍 ค้นหาลูกค้า" oninput="searchCust(this.value)">
-      <button onclick="addNewCust()" class="bico" style="font-size:11px;padding:10px">+ ใหม่</button>
+      <input type="text" id="daily-csearch" class="inp" style="flex:1;font-size:13px;padding:10px" placeholder="🔍 ค้นหาลูกค้า" oninput="searchDailyCust(this.value)">
+      <button onclick="addNewDailyCust()" class="bico" style="font-size:11px;padding:10px">+ ใหม่</button>
     </div>
-    <div id="csearch-res" class="sres" style="margin-bottom:8px"></div>
+    <div id="daily-csearch-res" class="sres" style="margin-bottom:8px"></div>
 
     <!-- Selected Customer -->
-    <div id="csel-box" class="csel hidden" style="margin-bottom:8px;padding:8px 10px">
-      <div><div class="cn" id="csel-name" style="font-size:12px"></div><div class="cs" id="csel-phone" style="font-size:10px"></div></div>
-      <button class="ccl" onclick="clearCust()" style="font-size:16px">✕</button>
+    <div id="daily-csel-box" class="csel hidden" style="margin-bottom:8px;padding:8px 10px">
+      <div><div class="cn" id="daily-csel-name" style="font-size:12px"></div><div class="cs" id="daily-csel-phone" style="font-size:10px"></div></div>
+      <button class="ccl" onclick="clearDailyCust()" style="font-size:16px">✕</button>
     </div>
 
     <!-- Room -->
-    <div class="field" style="margin-bottom:8px"><label>ห้อง</label><select id="qci-room" class="sel" onchange="qciRoomChanged()" style="font-size:13px;padding:10px"></select></div>
+    <div class="field" style="margin-bottom:8px"><label>ห้อง</label><select id="daily-room" class="sel" onchange="dailyRoomChanged()" style="font-size:13px;padding:10px"></select></div>
 
-    <!-- Rental Type -->
+    <!-- Dates -->
     <div class="inrow" style="margin-bottom:8px">
-      <label class="po checked" onclick="qciSetType('daily')" id="qci-type-daily">
-        <input type="radio" name="qci-type" value="daily" checked>
-        <span class="pol"><span class="poi">📅</span><span>รายวัน</span></span>
-      </label>
-      <label class="po" onclick="qciSetType('monthly')" id="qci-type-monthly">
-        <input type="radio" name="qci-type" value="monthly">
-        <span class="pol"><span class="poi">🗓️</span><span>รายเดือน</span></span>
-      </label>
+      <div class="field" style="margin-bottom:0"><label>เช็คอิน</label><input type="date" id="daily-ci-date" class="inp" style="font-size:13px;padding:10px" onchange="dailyCalcTotal()"></div>
+      <div class="field" style="margin-bottom:0"><label>เช็คเอาท์</label><input type="date" id="daily-co-date" class="inp" style="font-size:13px;padding:10px" onchange="dailyCalcTotal()"></div>
     </div>
-
-    <!-- Dates (Daily) -->
-    <div id="qci-daily-dates">
-      <div class="inrow" style="margin-bottom:8px">
-        <div class="field" style="margin-bottom:0"><label>เช็คอิน</label><input type="date" id="qci-date" class="inp" style="font-size:13px;padding:10px" onchange="qciCalcTotal()"></div>
-        <div class="field" style="margin-bottom:0"><label>เช็คเอาท์</label><input type="date" id="qco-date" class="inp" style="font-size:13px;padding:10px" onchange="qciCalcTotal()"></div>
-      </div>
-      <div class="field" style="margin-bottom:8px"><label>🌙 คืน</label><input type="number" id="qci-nights" class="inp" value="1" readonly style="font-size:13px;padding:10px"></div>
-    </div>
-
-    <!-- Dates (Monthly) -->
-    <div id="qci-monthly-dates" style="display:none">
-      <div class="inrow" style="margin-bottom:8px">
-        <div class="field" style="margin-bottom:0"><label>เริ่มเช่า</label><input type="date" id="qci-start" class="inp" style="font-size:13px;padding:10px"></div>
-        <div class="field" style="margin-bottom:0"><label>เดือน</label><input type="number" id="qci-months" class="inp" value="1" min="1" style="font-size:13px;padding:10px"></div>
-      </div>
-    </div>
+    <div class="field" style="margin-bottom:8px"><label>🌙 คืน</label><input type="number" id="daily-nights" class="inp" value="1" readonly style="font-size:13px;padding:10px"></div>
 
     <!-- Price -->
     <div class="inrow" style="margin-bottom:8px">
-      <div class="field" style="margin-bottom:0"><label>ราคา/คืน</label><input type="number" id="qci-rate" class="inp" readonly style="font-size:13px;padding:10px"></div>
-      <div class="field" style="margin-bottom:0"><label>รวมค่าห้อง</label><input type="number" id="qci-room-total" class="inp" readonly style="font-size:13px;padding:10px"></div>
+      <div class="field" style="margin-bottom:0"><label>ราคา/คืน</label><input type="number" id="daily-rate" class="inp" readonly style="font-size:13px;padding:10px"></div>
+      <div class="field" style="margin-bottom:0"><label>รวมค่าห้อง</label><input type="number" id="daily-room-total" class="inp" readonly style="font-size:13px;padding:10px"></div>
     </div>
-
-    <!-- Monthly: Meter Readings -->
-    <div id="qci-meter-section" style="display:none">
-      <div class="inrow" style="margin-bottom:8px">
-        <div class="field" style="margin-bottom:0"><label>⚡ มิเตอร์ไฟ (หน่วย)</label><input type="number" id="qci-elec-meter" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
-        <div class="field" style="margin-bottom:0"><label>💧 มิเตอร์น้ำ (หน่วย)</label><input type="number" id="qci-water-meter" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">ค่าไฟ ฿<span id="qci-elec-rate">8</span>/หน่วย | ค่าน้ำ ฿<span id="qci-water-rate">25</span>/หน่วย</div>
-    </div>
-
-    <div class="field" style="margin-bottom:8px"><label>📋 มัดจำ</label><input type="number" id="qci-deposit" class="inp" value="200" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
 
     <!-- Total -->
     <div class="tbox" style="margin-bottom:8px;padding:12px">
-      <div class="tbox-lbl" id="qci-total-label">ค่าห้องทั้งหมด</div>
-      <div class="tbox-amt" id="qci-grand-total" style="font-size:24px">฿0</div>
-      <div id="qci-total-detail" style="font-size:10px;opacity:.7;margin-top:4px"></div>
+      <div class="tbox-lbl">ค่าห้องทั้งหมด (รวม VAT)</div>
+      <div class="tbox-amt" id="daily-grand-total" style="font-size:24px">฿0</div>
+      <div id="daily-total-detail" style="font-size:10px;opacity:.7;margin-top:4px"></div>
     </div>
 
-    <!-- Payment -->
-    <div class="ctitle" style="margin-bottom:6px">ชำระเงิน</div>
-    <div class="pm" style="margin-bottom:12px">
-      <label class="po" onclick="selQCI(this)"><input type="radio" name="qci-pay" value="cash" checked><span class="pol"><span class="poi">💵</span><span>สด</span></span></label>
-      <label class="po" onclick="selQCI(this)"><input type="radio" name="qci-pay" value="transfer"><span class="pol"><span class="poi">🏦</span><span>โอน</span></span></label>
-      <label class="po" onclick="selQCI(this)"><input type="radio" name="qci-pay" value="card"><span class="pol"><span class="poi">💳</span><span>บัตร</span></span></label>
+    <button onclick="saveDailyCheckin()" class="btn bp" style="padding:14px;font-size:15px">✅ ยืนยันเช็คอิน</button>
+  </div>
+</div>
+
+<!-- MONTHLY CHECKIN MODAL -->
+<div class="overlay" id="monthly-checkin-popup" onclick="closeQuickPopup(event,'monthly-checkin-popup')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title"><span>🗓️ เช่ารายเดือน (หอพัก)</span><button class="sheet-close" onclick="closeQuickPopup()">✕</button></div>
+
+    <!-- Customer Search -->
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input type="text" id="monthly-csearch" class="inp" style="flex:1;font-size:13px;padding:10px" placeholder="🔍 ค้นหาผู้เช่า" oninput="searchMonthlyCust(this.value)">
+      <button onclick="addNewMonthlyCust()" class="bico" style="font-size:11px;padding:10px">+ ใหม่</button>
+    </div>
+    <div id="monthly-csearch-res" class="sres" style="margin-bottom:8px"></div>
+
+    <!-- Selected Customer -->
+    <div id="monthly-csel-box" class="csel hidden" style="margin-bottom:8px;padding:8px 10px">
+      <div><div class="cn" id="monthly-csel-name" style="font-size:12px"></div><div class="cs" id="monthly-csel-phone" style="font-size:10px"></div></div>
+      <button class="ccl" onclick="clearMonthlyCust()" style="font-size:16px">✕</button>
     </div>
 
-    <button onclick="saveQuickCheckin()" class="btn bp" style="padding:14px;font-size:15px">✅ ยืนยันเช็คอิน</button>
-  </div>
-</div>
+    <!-- Room -->
+    <div class="field" style="margin-bottom:8px"><label>ห้อง</label><select id="monthly-room" class="sel" onchange="monthlyRoomChanged()" style="font-size:13px;padding:10px"></select></div>
 
-<!-- QUICK GUEST MODAL -->
-<div class="overlay" id="quick-guest-popup" onclick="closeQuickPopup(event,'quick-guest-popup')">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title"><span>⚡ เพิ่มผู้พัก</span><button class="sheet-close" onclick="closeQuickPopup()">✕</button></div>
-    <div class="field"><label>ชื่อ</label><input type="text" id="qg-name" class="inp"></div>
-    <div class="field"><label>เบอร์โทร</label><input type="tel" id="qg-phone" class="inp"></div>
-    <div class="field"><label>เลขบัตร</label><input type="text" id="qg-idcard" class="inp" maxlength="13"></div>
-    <div class="field"><label>ที่อยู่</label><textarea id="qg-address" class="ta" rows="3"></textarea></div>
-    <button onclick="saveQuickGuest()" class="btn bp" style="margin-top:12px">✅ บันทึก</button>
-  </div>
-</div>
+    <!-- Dates -->
+    <div class="inrow" style="margin-bottom:8px">
+      <div class="field" style="margin-bottom:0"><label>เริ่มเช่า</label><input type="date" id="monthly-start" class="inp" style="font-size:13px;padding:10px"></div>
+      <div class="field" style="margin-bottom:0"><label>เดือน</label><input type="number" id="monthly-months" class="inp" value="1" min="1" style="font-size:13px;padding:10px"></div>
+    </div>
 
-<!-- QUICK INCOME MODAL -->
-<div class="overlay" id="quick-income-popup" onclick="closeQuickPopup(event,'quick-income-popup')">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title"><span>⚡ เพิ่มรายรับ</span><button class="sheet-close" onclick="closeQuickPopup()">✕</button></div>
-    <div class="field"><label>วันที่</label><input type="date" id="qi-date" class="inp"></div>
-    <div class="field"><label>รายการ</label><input type="text" id="qi-item" class="inp" placeholder="เช่น ค่าห้อง ห้อง A101"></div>
-    <div class="field"><label>จำนวนเงิน</label><input type="number" id="qi-amount" class="inp"></div>
-    <div class="field"><label>ห้อง</label><select id="qi-room" class="sel"></select></div>
-    <div class="field"><label>หมายเหตุ</label><textarea id="qi-note" class="ta" rows="2"></textarea></div>
-    <button onclick="saveQuickIncome()" class="btn bp" style="margin-top:12px">✅ บันทึก</button>
-  </div>
-</div>
+    <!-- Price -->
+    <div class="field" style="margin-bottom:8px"><label>ราคา/เดือน</label><input type="number" id="monthly-rate" class="inp" readonly style="font-size:13px;padding:10px"></div>
 
-<!-- QUICK EXPENSE MODAL -->
-<div class="overlay" id="quick-expense-popup" onclick="closeQuickPopup(event,'quick-expense-popup')">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title"><span>⚡ เพิ่มรายจ่าย</span><button class="sheet-close" onclick="closeQuickPopup()">✕</button></div>
-    <div class="field"><label>วันที่</label><input type="date" id="qe-date" class="inp"></div>
-    <div class="field"><label>รายการ</label><input type="text" id="qe-item" class="inp" placeholder="เช่น ค่าไฟ, ค่าคนทำความสะอาด"></div>
-    <div class="field"><label>จำนวนเงิน</label><input type="number" id="qe-amount" class="inp"></div>
-    <div class="field"><label>หมวดหมู่</label><select id="qe-category" class="sel">
-      <option value="">-- เลือก --</option>
-      <option value="utilities">ค่าน้ำ/ไฟ</option>
-      <option value="maintenance">ซ่อมบำรุง</option>
-      <option value="salary">เงินเดือน</option>
-      <option value="supplies">อุปกรณ์</option>
-      <option value="other">อื่นๆ</option>
-    </select></div>
-    <div class="field"><label>หมายเหตุ</label><textarea id="qe-note" class="ta" rows="2"></textarea></div>
-    <button onclick="saveQuickExpense()" class="btn bp" style="margin-top:12px">✅ บันทึก</button>
+    <!-- Meter Readings -->
+    <div class="inrow" style="margin-bottom:8px">
+      <div class="field" style="margin-bottom:0"><label>⚡ มิเตอร์ไฟ (หน่วย)</label><input type="number" id="monthly-elec-meter" class="inp" value="0" style="font-size:13px;padding:10px" oninput="monthlyCalcTotal()"></div>
+      <div class="field" style="margin-bottom:0"><label>💧 มิเตอร์น้ำ (หน่วย)</label><input type="number" id="monthly-water-meter" class="inp" value="0" style="font-size:13px;padding:10px" oninput="monthlyCalcTotal()"></div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:8px">ค่าไฟ ฿8/หน่วย | ค่าน้ำ ฿25/หน่วย</div>
+
+    <!-- Total -->
+    <div class="tbox" style="margin-bottom:8px;padding:12px">
+      <div class="tbox-lbl">ยอดรวมทั้งหมด</div>
+      <div class="tbox-amt" id="monthly-grand-total" style="font-size:24px">฿0</div>
+      <div id="monthly-total-detail" style="font-size:10px;opacity:.7;margin-top:4px"></div>
+    </div>
+
+    <button onclick="saveMonthlyCheckin()" class="btn bp" style="padding:14px;font-size:15px">✅ ยืนยันเช่า</button>
   </div>
 </div>
 
