@@ -46,36 +46,21 @@ jobs:
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
-          name: app-debug
+          name: app-debug-v5.1
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          
+          retention-days: 30
+
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: android/app/build/outputs/apk/debug/app-debug.apk
           tag_name: v5.1.${{ github.run_number }}
-          name: Release v5.1.${{ github.run_number }}
+          name: VIPAT Hotel Manager v5.1.${{ github.run_number }}
           draft: false
           prerelease: false
-          body: |
-            ## VIPAT Hotel Manager v5.1
-            
-            ### New Features
-            - Modern UI/UX with improved design
-            - Dark Mode support
-            - IndexedDB for better storage
-            - PWA support
-            - Push Notifications ready
-            - Charts & Analytics
-            - Improved OCR
-            - Data backup/restore
-            
-            ### Technical
-            - Capacitor v7
-            - Vite v6 build system
-            - ES Modules
-            - Better performance
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
