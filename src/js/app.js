@@ -287,12 +287,6 @@ async function openQuickCheckin() {
     clearCust();
     const deposit = document.getElementById('qci-deposit');
     if (deposit) deposit.value = state.settings?.depositAmount || 200;
-    const efee = document.getElementById('qci-efee');
-    if (efee) efee.value = 0;
-    const wfee = document.getElementById('qci-wfee');
-    if (wfee) wfee.value = 0;
-    const disc = document.getElementById('qci-disc');
-    if (disc) disc.value = 0;
     
     document.getElementById('quick-checkin-popup')?.classList.add('show');
     console.log('[CheckIn] Popup opened with', rooms.length, 'rooms');
@@ -319,10 +313,7 @@ function qciCalcTotal() {
   const ciDate = document.getElementById('qci-date')?.value;
   const coDate = document.getElementById('qco-date')?.value;
   const rate = parseInt(document.getElementById('qci-rate')?.value) || 0;
-  const efee = parseInt(document.getElementById('qci-efee')?.value) || 0;
-  const wfee = parseInt(document.getElementById('qci-wfee')?.value) || 0;
   const dep = parseInt(document.getElementById('qci-deposit')?.value) || 0;
-  const disc = parseInt(document.getElementById('qci-disc')?.value) || 0;
   
   if (!ciDate || !coDate) return;
   
@@ -331,8 +322,7 @@ function qciCalcTotal() {
   const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
   
   const roomTotal = rate * nights;
-  const subtotal = roomTotal + efee + wfee;
-  const grandTotal = subtotal - disc + dep;
+  const grandTotal = roomTotal + dep;
   
   const nightsEl = document.getElementById('qci-nights');
   const roomTotalEl = document.getElementById('qci-room-total');
@@ -361,15 +351,12 @@ async function saveQuickCheckin() {
     }
     
     const rate = parseInt(document.getElementById('qci-rate')?.value) || room.price_per_night;
-    const efee = parseInt(document.getElementById('qci-efee')?.value) || 0;
-    const wfee = parseInt(document.getElementById('qci-wfee')?.value) || 0;
     const dep = parseInt(document.getElementById('qci-deposit')?.value) || 0;
-    const disc = parseInt(document.getElementById('qci-disc')?.value) || 0;
     
     const ci = new Date(ciDate);
     const co = new Date(coDate);
     const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
-    const total = (rate * nights) + efee + wfee - disc;
+    const total = rate * nights;
     
     const payMethod = document.querySelector('input[name="qci-pay"]:checked')?.value || 'cash';
     

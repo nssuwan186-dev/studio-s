@@ -850,19 +850,13 @@ body {
       <div class="field" style="margin-bottom:0"><label>ราคา/คืน</label><input type="number" id="qci-rate" class="inp" readonly style="font-size:13px;padding:10px"></div>
       <div class="field" style="margin-bottom:0"><label>รวมค่าห้อง</label><input type="number" id="qci-room-total" class="inp" readonly style="font-size:13px;padding:10px"></div>
     </div>
-    <div class="inrow" style="margin-bottom:8px">
-      <div class="field" style="margin-bottom:0"><label>💡 ค่าไฟ</label><input type="number" id="qci-efee" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
-      <div class="field" style="margin-bottom:0"><label>💧 ค่าน้ำ</label><input type="number" id="qci-wfee" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
-    </div>
-    <div class="inrow" style="margin-bottom:8px">
-      <div class="field" style="margin-bottom:0"><label>📋 มัดจำ</label><input type="number" id="qci-deposit" class="inp" value="200" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
-      <div class="field" style="margin-bottom:0"><label>🏷️ ส่วนลด</label><input type="number" id="qci-disc" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
-    </div>
+    <div class="field" style="margin-bottom:8px"><label>📋 มัดจำ</label><input type="number" id="qci-deposit" class="inp" value="200" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
 
     <!-- Total -->
     <div class="tbox" style="margin-bottom:8px;padding:12px">
-      <div class="tbox-lbl">ยอดรวม</div>
+      <div class="tbox-lbl">ค่าห้องทั้งหมด</div>
       <div class="tbox-amt" id="qci-grand-total" style="font-size:24px">฿0</div>
+      <div style="font-size:10px;opacity:.7;margin-top:4px">ค่าน้ำ/ไฟ คิดตอนเช็คเอาท์</div>
     </div>
 
     <!-- Payment -->
