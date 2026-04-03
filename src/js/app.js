@@ -263,6 +263,25 @@ async function loadDash() {
 // =============================================================
 // CHECK-IN (Popup only)
 // =============================================================
+let qciRentalType = 'daily'; // 'daily' or 'monthly'
+
+function qciSetType(type) {
+  qciRentalType = type;
+  
+  // Update UI
+  document.getElementById('qci-type-daily')?.classList.toggle('checked', type === 'daily');
+  document.getElementById('qci-type-monthly')?.classList.toggle('checked', type === 'monthly');
+  document.getElementById('qci-daily-dates').style.display = type === 'daily' ? '' : 'none';
+  document.getElementById('qci-monthly-dates').style.display = type === 'monthly' ? '' : 'none';
+  document.getElementById('qci-meter-section').style.display = type === 'monthly' ? '' : 'none';
+  
+  // Update labels
+  const label = document.getElementById('qci-total-label');
+  if (label) label.textContent = type === 'daily' ? 'ค่าห้องทั้งหมด' : 'ยอดรวมทั้งหมด';
+  
+  qciCalcTotal();
+}
+
 async function openQuickCheckin() {
   console.log('[CheckIn] Opening check-in popup...');
   
@@ -280,13 +299,24 @@ async function openQuickCheckin() {
     const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const ciDate = document.getElementById('qci-date');
     const coDate = document.getElementById('qco-date');
+    const startDate = document.getElementById('qci-start');
     if (ciDate) ciDate.value = today;
     if (coDate) coDate.value = tomorrow;
+    if (startDate) startDate.value = today;
+    
+    // Reset to daily
+    qciSetType('daily');
     
     // Reset form
     clearCust();
     const deposit = document.getElementById('qci-deposit');
     if (deposit) deposit.value = state.settings?.depositAmount || 200;
+    
+    // Set rates
+    const elecRate = document.getElementById('qci-elec-rate');
+    const waterRate = document.getElementById('qci-water-rate');
+    if (elecRate) elecRate.textContent = state.settings?.electricRate || 8;
+    if (waterRate) waterRate.textContent = state.settings?.waterRate || 25;
     
     document.getElementById('quick-checkin-popup')?.classList.add('show');
     console.log('[CheckIn] Popup opened with', rooms.length, 'rooms');
@@ -310,25 +340,57 @@ function qciRoomChanged() {
 }
 
 function qciCalcTotal() {
-  const ciDate = document.getElementById('qci-date')?.value;
-  const coDate = document.getElementById('qco-date')?.value;
   const rate = parseInt(document.getElementById('qci-rate')?.value) || 0;
   const dep = parseInt(document.getElementById('qci-deposit')?.value) || 0;
+  const detail = document.getElementById('qci-total-detail');
   
-  if (!ciDate || !coDate) return;
+  let roomTotal = 0;
+  let elecCost = 0;
+  let waterCost = 0;
+  let grandTotal = 0;
   
-  const ci = new Date(ciDate);
-  const co = new Date(coDate);
-  const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
+  if (qciRentalType === 'daily') {
+    // Daily: rate × nights
+    const ciDate = document.getElementById('qci-date')?.value;
+    const coDate = document.getElementById('qco-date')?.value;
+    
+    if (!ciDate || !coDate) return;
+    
+    const ci = new Date(ciDate);
+    const co = new Date(coDate);
+    const nights = Math.max(1, Math.ceil((co - ci) / 86400000));
+    
+    roomTotal = rate * nights;
+    grandTotal = roomTotal + dep;
+    
+    const nightsEl = document.getElementById('qci-nights');
+    if (nightsEl) nightsEl.value = nights;
+    
+    if (detail) detail.textContent = `${nights} คืน × ฿${rate}`;
+    
+  } else {
+    // Monthly: rate × months + meter readings
+    const months = parseInt(document.getElementById('qci-months')?.value) || 1;
+    const elecUnits = parseInt(document.getElementById('qci-elec-meter')?.value) || 0;
+    const waterUnits = parseInt(document.getElementById('qci-water-meter')?.value) || 0;
+    const elecRate = state.settings?.electricRate || 8;
+    const waterRate = state.settings?.waterRate || 25;
+    
+    roomTotal = rate * months;
+    elecCost = elecUnits * elecRate;
+    waterCost = waterUnits * waterRate;
+    grandTotal = roomTotal + elecCost + waterCost + dep;
+    
+    if (detail) {
+      detail.textContent = `${months} เดือน × ฿${rate}` +
+        (elecCost > 0 ? ` | ไฟ ${elecUnits} หน่วย = ฿${elecCost.toLocaleString()}` : '') +
+        (waterCost > 0 ? ` | น้ำ ${waterUnits} หน่วย = ฿${waterCost.toLocaleString()}` : '');
+    }
+  }
   
-  const roomTotal = rate * nights;
-  const grandTotal = roomTotal + dep;
-  
-  const nightsEl = document.getElementById('qci-nights');
   const roomTotalEl = document.getElementById('qci-room-total');
   const grandEl = document.getElementById('qci-grand-total');
   
-  if (nightsEl) nightsEl.value = nights;
   if (roomTotalEl) roomTotalEl.value = roomTotal;
   if (grandEl) grandEl.textContent = `฿${grandTotal.toLocaleString()}`;
 }

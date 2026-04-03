@@ -838,25 +838,57 @@ body {
     <!-- Room -->
     <div class="field" style="margin-bottom:8px"><label>ห้อง</label><select id="qci-room" class="sel" onchange="qciRoomChanged()" style="font-size:13px;padding:10px"></select></div>
 
-    <!-- Dates -->
+    <!-- Rental Type -->
     <div class="inrow" style="margin-bottom:8px">
-      <div class="field" style="margin-bottom:0"><label>เช็คอิน</label><input type="date" id="qci-date" class="inp" style="font-size:13px;padding:10px" onchange="qciCalcTotal()"></div>
-      <div class="field" style="margin-bottom:0"><label>เช็คเอาท์</label><input type="date" id="qco-date" class="inp" style="font-size:13px;padding:10px" onchange="qciCalcTotal()"></div>
+      <label class="po checked" onclick="qciSetType('daily')" id="qci-type-daily">
+        <input type="radio" name="qci-type" value="daily" checked>
+        <span class="pol"><span class="poi">📅</span><span>รายวัน</span></span>
+      </label>
+      <label class="po" onclick="qciSetType('monthly')" id="qci-type-monthly">
+        <input type="radio" name="qci-type" value="monthly">
+        <span class="pol"><span class="poi">🗓️</span><span>รายเดือน</span></span>
+      </label>
     </div>
-    <div class="field" style="margin-bottom:8px"><label>🌙 คืน</label><input type="number" id="qci-nights" class="inp" value="1" readonly style="font-size:13px;padding:10px"></div>
+
+    <!-- Dates (Daily) -->
+    <div id="qci-daily-dates">
+      <div class="inrow" style="margin-bottom:8px">
+        <div class="field" style="margin-bottom:0"><label>เช็คอิน</label><input type="date" id="qci-date" class="inp" style="font-size:13px;padding:10px" onchange="qciCalcTotal()"></div>
+        <div class="field" style="margin-bottom:0"><label>เช็คเอาท์</label><input type="date" id="qco-date" class="inp" style="font-size:13px;padding:10px" onchange="qciCalcTotal()"></div>
+      </div>
+      <div class="field" style="margin-bottom:8px"><label>🌙 คืน</label><input type="number" id="qci-nights" class="inp" value="1" readonly style="font-size:13px;padding:10px"></div>
+    </div>
+
+    <!-- Dates (Monthly) -->
+    <div id="qci-monthly-dates" style="display:none">
+      <div class="inrow" style="margin-bottom:8px">
+        <div class="field" style="margin-bottom:0"><label>เริ่มเช่า</label><input type="date" id="qci-start" class="inp" style="font-size:13px;padding:10px"></div>
+        <div class="field" style="margin-bottom:0"><label>เดือน</label><input type="number" id="qci-months" class="inp" value="1" min="1" style="font-size:13px;padding:10px"></div>
+      </div>
+    </div>
 
     <!-- Price -->
     <div class="inrow" style="margin-bottom:8px">
       <div class="field" style="margin-bottom:0"><label>ราคา/คืน</label><input type="number" id="qci-rate" class="inp" readonly style="font-size:13px;padding:10px"></div>
       <div class="field" style="margin-bottom:0"><label>รวมค่าห้อง</label><input type="number" id="qci-room-total" class="inp" readonly style="font-size:13px;padding:10px"></div>
     </div>
+
+    <!-- Monthly: Meter Readings -->
+    <div id="qci-meter-section" style="display:none">
+      <div class="inrow" style="margin-bottom:8px">
+        <div class="field" style="margin-bottom:0"><label>⚡ มิเตอร์ไฟ (หน่วย)</label><input type="number" id="qci-elec-meter" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
+        <div class="field" style="margin-bottom:0"><label>💧 มิเตอร์น้ำ (หน่วย)</label><input type="number" id="qci-water-meter" class="inp" value="0" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">ค่าไฟ ฿<span id="qci-elec-rate">8</span>/หน่วย | ค่าน้ำ ฿<span id="qci-water-rate">25</span>/หน่วย</div>
+    </div>
+
     <div class="field" style="margin-bottom:8px"><label>📋 มัดจำ</label><input type="number" id="qci-deposit" class="inp" value="200" style="font-size:13px;padding:10px" oninput="qciCalcTotal()"></div>
 
     <!-- Total -->
     <div class="tbox" style="margin-bottom:8px;padding:12px">
-      <div class="tbox-lbl">ค่าห้องทั้งหมด</div>
+      <div class="tbox-lbl" id="qci-total-label">ค่าห้องทั้งหมด</div>
       <div class="tbox-amt" id="qci-grand-total" style="font-size:24px">฿0</div>
-      <div style="font-size:10px;opacity:.7;margin-top:4px">ค่าน้ำ/ไฟ คิดตอนเช็คเอาท์</div>
+      <div id="qci-total-detail" style="font-size:10px;opacity:.7;margin-top:4px"></div>
     </div>
 
     <!-- Payment -->
