@@ -978,6 +978,105 @@ function checkNetwork() {
   showToast(online ? '📶 ออนไลน์' : '⚠️ ออฟไลน์');
 }
 
+function selPay(el) {
+  document.querySelectorAll('#checkin .po').forEach(p => p.classList.remove('checked'));
+  el.classList.add('checked');
+}
+
+function selQCI(el) {
+  document.querySelectorAll('#quick-checkin-popup .po').forEach(p => p.classList.remove('checked'));
+  el.classList.add('checked');
+}
+
+function openRoomFilter() {
+  showToast('ใช้ตัวกรองด้านบนเพื่อกรองห้อง');
+}
+
+function useHistory() {
+  if (state.historyData) {
+    showToast('ใช้ข้อมูลประวัติแล้ว');
+    document.getElementById('hist-box')?.classList.remove('show');
+  }
+}
+
+async function exportData() {
+  try {
+    const data = await db.export();
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resort-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('📥 สำรองข้อมูลสำเร็จ');
+  } catch (e) {
+    console.error('[Export] Error:', e);
+    showToast('เกิดข้อผิดพลาด', 'err');
+  }
+}
+
+async function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      await db.import(e.target.result);
+      showToast('📤 กู้ข้อมูลสำเร็จ');
+      goSec('dashboard');
+    } catch (err) {
+      showToast('❌ ไฟล์ไม่ถูกต้อง', 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function clearAllData() {
+  if (!confirm('⚠️ ล้างข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถยกเลิกได้')) return;
+  try {
+    await db.clear();
+    showToast('ล้างข้อมูลแล้ว');
+    goSec('dashboard');
+  } catch (e) {
+    console.error('[Clear] Error:', e);
+    showToast('เกิดข้อผิดพลาด', 'err');
+  }
+}
+
+async function regenRooms() {
+  if (!confirm('สร้างห้องใหม่ทั้งหมด? ข้อมูลการจองจะถูกลบ')) return;
+  try {
+    const a = parseInt(document.getElementById('set-count-a')?.value) || 11;
+    const b = parseInt(document.getElementById('set-count-b')?.value) || 11;
+    const n = parseInt(document.getElementById('set-count-n')?.value) || 7;
+
+    const rooms = [];
+    let id = 1;
+
+    for (let i = 1; i <= a; i++) {
+      const floor = i <= 5 ? 1 : 2;
+      rooms.push({ id: id++, room_number: `A10${i}`, building: 'A', floor, room_type: i === 3 || i === 8 ? 'Standard Twin' : 'Standard', price_per_night: i === 3 || i === 8 ? 500 : 400, status: 'available' });
+    }
+    for (let i = 1; i <= b; i++) {
+      const floor = i <= 5 ? 1 : 2;
+      rooms.push({ id: id++, room_number: `B10${i}`, building: 'B', floor, room_type: i === 3 || i === 8 || i === 11 ? 'Standard Twin' : 'Standard', price_per_night: i === 3 || i === 8 || i === 11 ? 500 : 400, status: 'available' });
+    }
+    for (let i = 1; i <= n; i++) {
+      rooms.push({ id: id++, room_number: `N${i}`, building: 'N', floor: 1, room_type: i === 2 || i === 4 || i === 7 ? 'Standard Twin' : 'Standard', price_per_night: i === 2 || i === 4 || i === 7 ? 600 : 500, status: 'available' });
+    }
+
+    await db.rooms.bulkAdd(rooms);
+    showToast(`สร้างห้องใหม่ ${rooms.length} ห้อง`);
+    loadSettings();
+    goSec('dashboard');
+  } catch (e) {
+    console.error('[Regen] Error:', e);
+    showToast('เกิดข้อผิดพลาด', 'err');
+  }
+}
+
 // =============================================================
 // EXPORT TO WINDOW
 // =============================================================
@@ -1011,6 +1110,14 @@ window.calcTotal = calcTotal;
 window.doCheckin = doCheckin;
 window.loadCusts = loadCusts;
 window.showToast = showToast;
+window.selPay = selPay;
+window.selQCI = selQCI;
+window.openRoomFilter = openRoomFilter;
+window.useHistory = useHistory;
+window.exportData = exportData;
+window.importData = importData;
+window.clearAllData = clearAllData;
+window.regenRooms = regenRooms;
 
 // =============================================================
 // INIT
