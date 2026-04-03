@@ -483,5 +483,9 @@ async function pushAllToServer() {
   }
 }
 
+// Export for ES Module usage
+export { api, API_URL, setApiUrl, toggleSync, checkOnlineStatus };
+
+// Initialize on module load
 setInterval(checkOnlineStatus, 30000);
 checkOnlineStatus();

@@ -1,0 +1,69 @@
+{
+  "name": "VIPAT Hotel Manager",
+  "short_name": "VIPAT Hotel",
+  "description": "ระบบจัดการโรงแรม รีสอร์ท สวีท v5",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1B4332",
+  "background_color": "#F8FAF9",
+  "categories": ["business", "productivity", "finance"],
+  "lang": "th",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "เช็คอิน",
+      "short_name": "เช็คอิน",
+      "description": "เช็คอินผู้เข้าพักใหม่",
+      "url": "/?action=checkin",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "ห้องพัก",
+      "short_name": "ห้อง",
+      "description": "ดูสถานะห้องพัก",
+      "url": "/?action=rooms",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "name",
+      "text": "description",
+      "files": [
+        {
+          "name": "images",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  },
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "handle_links": "preferred"
+}
